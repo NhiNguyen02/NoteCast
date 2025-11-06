@@ -111,8 +111,10 @@ fun SortScreen(onClose: () -> Unit) {
             .background(brush = backgroundPrimary)
             .clickable(indication = null, interactionSource = remember { InteractionSourceAlias() }) { /* consume clicks */ }
     ) {
+
         Column(modifier = Modifier.fillMaxSize()) {
             // HEADER — kept identical structure to FilterScreen header
+            Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

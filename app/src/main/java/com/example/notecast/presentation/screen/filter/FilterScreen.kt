@@ -135,6 +135,7 @@ fun FilterScreen(onClose: () -> Unit) {
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // HEADER (content padded, divider full-width)
+            Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

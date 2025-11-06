@@ -78,7 +78,7 @@ fun AppDrawerContent(
                 isSelected = currentRoute == Screen.Home.route,
                 onClick = {
                     onNavigate(Screen.Home.route)
-//                    scope.launch { drawerState.close() } // Đóng menu
+                    scope.launch { drawerState.close() } // Đóng menu
                 }
             )
 
