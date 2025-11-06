@@ -1,15 +1,31 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Gradle files
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration file (SDK path, etc.)
 local.properties
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# Mac system files
+.DS_Store
+
+# NDK / Native builds
+.cxx/
+externalNativeBuild/
+
+# Generated files
+captures/
+output.json
+
+# Keystore files (nếu bạn ký app riêng)
+*.jks
+*.keystore
+
+# Misc
+*.log
+*.tmp
