@@ -27,11 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,14 +51,18 @@ import com.example.notecast.presentation.theme.lightPurple
 import com.example.notecast.presentation.theme.textGradient
 import kotlinx.coroutines.launch
 
+/**
+ * HomeScreen: nhẹ, không quản lý dialog. Khi user nhấn FAB, HomeScreen gọi onOpenCreateDialog()
+ */
 @Composable
 fun HomeScreen(
-    drawerState: DrawerState, // Nhận DrawerState từ MainAppScreen
+    drawerState: DrawerState,
     notes: List<Note>,
     searchQuery: String,
     onSearch: (String) -> Unit,
     onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
+    onOpenCreateDialog: () -> Unit,
     onAddNoteClick: () -> Unit,
     onToggleFavorite: (Note) -> Unit,
     onTogglePin: (Note) -> Unit
@@ -80,34 +80,31 @@ fun HomeScreen(
                     .shadow(elevation = 6.dp, shape = CircleShape)
                     .clip(CircleShape)
                     .background(brush = backgroundTertiary)
-                    .clickable(onClick = onAddNoteClick),
+                    .clickable { onOpenCreateDialog() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(painter = painterResource(R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
+                Icon(painter = painterResource(id = com.example.notecast.R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
             }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Áp dụng padding của Scaffold
-                .padding(horizontal = 16.dp) // Padding riêng của màn hình
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
-            ){
-                // Icon mở menu (sử dụng drawerState được truyền vào)
+            ) {
                 Icon(
-                    painter = painterResource(R.drawable.outline_menu_24),
+                    painter = painterResource(id = R.drawable.outline_menu_24),
                     contentDescription = "menu",
                     tint = Color(0xff6200AE),
                     modifier = Modifier.clickable {
-                        scope.launch {
-                            drawerState.open()
-                        }
+                        scope.launch { drawerState.open() }
                     }
                 )
 
@@ -118,14 +115,15 @@ fun HomeScreen(
                     style = TextStyle(brush = textGradient)
                 )
                 Image(
-                    painter = painterResource(R.drawable.logo),
+                    painter = painterResource(id = R.drawable.logo),
                     contentDescription = "App Logo",
                     modifier = Modifier.size(30.dp)
                 )
             }
+
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Thanh tìm kiếm
+            // Search bar & UI (giữ nguyên logic cũ)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -135,12 +133,12 @@ fun HomeScreen(
                         0.0f to Color(0xff4AC5EE),
                         1.0f to Color(0xff5C6FD5)
                     ))
-                    .padding(horizontal = 12.dp), // Padding cho icon
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp) // Khoảng cách giữa các icon và text
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.search),
+                    painter = painterResource(id = R.drawable.search),
                     contentDescription = "Search",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
@@ -148,51 +146,32 @@ fun HomeScreen(
 
                 BasicTextField(
                     value = searchQuery,
-                    onValueChange = {
-                        onSearch(it)
-                    },
-                    modifier = Modifier.weight(1f), // << SỬA QUAN TRỌNG
-                    textStyle = LocalTextStyle.current.copy(
-                        color = Color.White,
-                        fontSize = 16.sp
-                    ),
+                    onValueChange = { onSearch(it) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = LocalTextStyle.current.copy(color = Color.White, fontSize = 16.sp),
                     cursorBrush = SolidColor(Color.White),
                     singleLine = true,
                     decorationBox = { innerTextField ->
-                        // Box này để căn chỉnh placeholder và text
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (searchQuery.isEmpty()) {
-                                Text(
-                                    text = "Tìm kiếm ghi chú...",
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontSize = 16.sp
-                                )
+                                Text(text = "Tìm kiếm ghi chú...", color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
                             }
-                            innerTextField() // Chữ bạn gõ
+                            innerTextField()
                         }
                     }
                 )
 
                 Icon(
-                    painter = painterResource(R.drawable.outline_mic_24),
+                    painter = painterResource(id = R.drawable.outline_mic_24),
                     contentDescription = "Voice Search",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
             }
-            if(!search.isEmpty()){
-                Spacer(modifier = Modifier.height(5.dp))
-                Text(
-                    modifier = Modifier.fillMaxWidth(),
-                    text = "Tìm thấy 3 kết quả phù hợp trong 10 ghi chú",
-                    color = lightPurple,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Buttons row
+            // Buttons row & notes list
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(
                     modifier = Modifier
@@ -203,7 +182,7 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(painter = painterResource(R.drawable.outline_filter_alt_24), contentDescription = "Bộ lọc", tint = Color.White)
+                        Icon(painter = painterResource(id = R.drawable.outline_filter_alt_24), contentDescription = "Bộ lọc", tint = Color.White)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Bộ lọc", color = Color.White)
                     }
@@ -215,9 +194,9 @@ fun HomeScreen(
                         .clickable(onClick = onSortClick)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
-                ){
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(painter = painterResource(R.drawable.arrow_up_down), contentDescription = "Sắp xếp", tint = Color.White)
+                        Icon(painter = painterResource(id = R.drawable.arrow_up_down), contentDescription = "Sắp xếp", tint = Color.White)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Sắp xếp", color = Color.White)
                     }
@@ -227,34 +206,19 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             if (notes.isEmpty()) {
-                // Empty state message
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.bg_empty),
-                        contentDescription = "No notes",
-                        modifier = Modifier.size(220.dp),
-                    )
+                    Image(painter = painterResource(id = R.drawable.bg_empty), contentDescription = "No notes", modifier = Modifier.size(220.dp))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Không có ghi chú nào ở đây", color = Color(0xff724C7F).copy(alpha = 0.45f))
                 }
             } else {
-                // Notes list
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(notes) { note ->
-                        NoteCard(
-                            note = note,
-                            onFavoriteClick = { onToggleFavorite(note) },
-                            onPinClick = { onTogglePin(note) }
-                        )
+                        NoteCard(note = note, onFavoriteClick = { onToggleFavorite(note) }, onPinClick = { onTogglePin(note) })
                     }
                 }
             }
@@ -262,47 +226,21 @@ fun HomeScreen(
     }
 }
 
-
-// --- PREVIEW ---
-// (Cập nhật Preview để dùng nền tối, giả lập nền gradient)
-@Preview(showBackground = true, device = "id:pixel_5")
+// Previews (giữ nguyên nếu cần)
+@Preview(showBackground = true)
 @Composable
-fun PreviewHomeScreenEmpty() {
+fun PreviewHomeScreen() {
     val previewDrawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .background(Color.DarkGray)) {
-        HomeScreen(
-            drawerState = previewDrawerState,
-            notes = emptyList(),
-            searchQuery = "",
-            onSearch = {},
-            onFilterClick = {},
-            onSortClick = {},
-            onAddNoteClick = {},
-            onToggleFavorite = {},
-            onTogglePin = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, device = "id:pixel_5")
-@Composable
-fun PreviewHomeScreenWithNotes() {
-    val previewDrawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .background(Color.DarkGray)) {
-        HomeScreen(
-            drawerState = previewDrawerState,
-            notes = sampleNotes,
-            searchQuery = "",
-            onSearch = {},
-            onFilterClick = {},
-            onSortClick = {},
-            onAddNoteClick = {},
-            onToggleFavorite = {},
-            onTogglePin = {}
-        )
-    }
+    HomeScreen(
+        drawerState = previewDrawerState,
+        notes = sampleNotes,
+        searchQuery = "",
+        onSearch = {},
+        onFilterClick = {},
+        onSortClick = {},
+        onOpenCreateDialog = {},
+        onAddNoteClick = {},
+        onToggleFavorite = {},
+        onTogglePin = {}
+    )
 }

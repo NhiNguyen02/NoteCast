@@ -32,3 +32,17 @@ val backgroundTertiary = Brush.verticalGradient(
     0.71f to Color(0xFF7532FB),
     0.95f to Color(0xFF8A4AE1),
 )
+// Colors tuned to match the Figma screenshot
+val BgGradientStart = Color(0xFFF5E9FF) // very light purple top
+val BgGradientEnd = Color(0xFFDFF6FF)   // light blue-ish bottom
+
+val PrimaryAccent = Color(0xFF7B4BFF)      // purple used for selected chips and apply button
+val PrimaryAccentDark = Color(0xFF5B2FE0)  // darker purple for title text / accents
+val White = Color(0xFFFFFFFF)
+val SurfaceGray = Color(0xFFF6F6FB)
+val TextPrimary = Color(0xFF222222)
+val TextSecondary = Color(0xFF6B6B6B)
+val BadgePurple = Color(0xFF6E47F8)
+
+val SuccessGreen = Color(0xFF2FD08B)
+val DangerRed = Color(0xFFFF4D6D)

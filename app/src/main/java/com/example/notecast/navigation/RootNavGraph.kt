@@ -5,7 +5,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.notecast.domain.repository.PreferencesRepository
-import com.example.notecast.presentation.screen.MainAppScreen
+// Import đúng: MainAppScreen nằm ở package navigation
+import com.example.notecast.navigation.MainAppScreen
 import com.example.notecast.presentation.screen.onboarding.OnboardingScreen
 import com.example.notecast.presentation.screen.splashscreen.SplashScreen
 

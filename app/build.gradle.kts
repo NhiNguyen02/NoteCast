@@ -39,8 +39,6 @@ android {
     buildFeatures {
         compose = true
     }
-
-
 }
 
 dependencies {
@@ -64,4 +62,8 @@ dependencies {
     implementation(libs.androidx.compose.material3.windowSizeClass)
     implementation(libs.androidx.compose.material3.adaptiveNavigationSuite)
     implementation(libs.androidx.navigation.compose)
+
+    // Thêm dependency cho Material Icons (extended)
+    // Thay đổi version nếu bạn dùng compose version khác.
+    implementation("androidx.compose.material:material-icons-extended:1.4.3")
 }
