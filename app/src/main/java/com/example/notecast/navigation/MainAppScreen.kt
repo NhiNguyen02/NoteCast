@@ -30,8 +30,10 @@ import com.example.notecast.presentation.components.sampleNotes
 import com.example.notecast.presentation.screen.sort.SortScreen
 import com.example.notecast.presentation.screen.filter.FilterScreen
 import com.example.notecast.presentation.screen.dialog.CreateNoteDialog
+import com.example.notecast.presentation.screen.folderscreen.FolderScreen
 import com.example.notecast.presentation.screen.homescreen.HomeScreen
 import com.example.notecast.presentation.screen.record.RecordingScreen
+import com.example.notecast.presentation.screen.settingsscreen.SettingsScreen
 import com.example.notecast.presentation.theme.backgroundPrimary
 import kotlinx.coroutines.launch
 
@@ -114,9 +116,19 @@ fun MainAppScreen() {
                     )
                 }
 
-                composable(Screen.Folders.route) { PlaceholderScreen(text = "Thư mục") }
+                composable(Screen.Folders.route) {
+                    FolderScreen(
+                        onBackClick = { appNavController.popBackStack() } ,
+                        onNewFolderClick = { showCreateDialog = true },
+                    )
+                }
                 composable(Screen.Notifications.route) { PlaceholderScreen(text = "Thông báo") }
-                composable(Screen.Settings.route) { PlaceholderScreen(text = "Cài đặt") }
+                composable(Screen.Settings.route) {
+                    SettingsScreen(
+                        onBackClick = {appNavController.popBackStack()}
+                    )
+
+                }
 
                 composable(Screen.Recording.route) {
                     RecordingScreen(

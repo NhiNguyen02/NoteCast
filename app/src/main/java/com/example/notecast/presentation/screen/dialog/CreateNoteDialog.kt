@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.notecast.presentation.theme.backgroundDialog
 
 @Composable
 fun CreateNoteDialog(
@@ -55,10 +56,7 @@ fun CreateNoteDialog(
             ) {
                 Box(
                     modifier = Modifier
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(gradientTop, gradientMiddle, gradientBottom)
-                            ),
+                        .background(backgroundDialog,
                             shape = RoundedCornerShape(corner)
                         )
                         .padding(18.dp)

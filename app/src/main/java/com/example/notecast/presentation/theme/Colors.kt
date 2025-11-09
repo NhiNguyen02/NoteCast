@@ -32,6 +32,15 @@ val backgroundTertiary = Brush.verticalGradient(
     0.71f to Color(0xFF7532FB),
     0.95f to Color(0xFF8A4AE1),
 )
+
+val backgroundDialog = Brush.verticalGradient(
+    0.0f to Color(0xffCCA8FF),
+    0.42f to Color(0xffA363FF),
+    0.62f to Color(0xff8F40FF),
+    0.83f to Color(0xff852EFF),
+    1.0f to Color(0xff7B1DFF)
+)
+
 // Colors tuned to match the Figma screenshot
 val BgGradientStart = Color(0xFFF5E9FF) // very light purple top
 val BgGradientEnd = Color(0xFFDFF6FF)   // light blue-ish bottom
