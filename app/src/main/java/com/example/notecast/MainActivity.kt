@@ -13,19 +13,20 @@ import com.example.notecast.domain.repository.PreferencesRepository
 import com.example.notecast.navigation.RootNavGraph
 import com.example.notecast.presentation.theme.backgroundPrimary
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+    @Inject
+    lateinit var preferencesRepository: PreferencesRepository
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val preferences = PreferencesRepository(applicationContext)
         setContent {
 
                 // Thiết lập NavController và gọi NavGraph ---
                 val navController = rememberNavController()
-                RootNavGraph(navController = navController, preferences = preferences)
+                RootNavGraph(navController = navController, preferences = preferencesRepository)
 
         }
     }

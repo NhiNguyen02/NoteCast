@@ -117,7 +117,7 @@ fun HomeScreen(
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "App Logo",
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(36.dp)
                 )
             }
 
@@ -141,7 +141,7 @@ fun HomeScreen(
                     painter = painterResource(id = R.drawable.search),
                     contentDescription = "Search",
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
 
                 BasicTextField(
@@ -165,7 +165,7 @@ fun HomeScreen(
                     painter = painterResource(id = R.drawable.outline_mic_24),
                     contentDescription = "Voice Search",
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
 
@@ -182,7 +182,11 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(painter = painterResource(id = R.drawable.outline_filter_alt_24), contentDescription = "Bộ lọc", tint = Color.White)
+                        Icon(
+                            painter = painterResource(id = R.drawable.outline_filter_alt_24),
+                            contentDescription = "Bộ lọc",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Bộ lọc", color = Color.White)
                     }
@@ -227,7 +231,7 @@ fun HomeScreen(
 }
 
 // Previews (giữ nguyên nếu cần)
-@Preview(showBackground = true)
+@Preview()
 @Composable
 fun PreviewHomeScreen() {
     val previewDrawerState = rememberDrawerState(initialValue = DrawerValue.Closed)

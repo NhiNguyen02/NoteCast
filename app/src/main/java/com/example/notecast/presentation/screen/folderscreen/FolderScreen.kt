@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.notecast.domain.entities.Folder
+import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.components.FolderCard
 import com.example.notecast.presentation.components.SelectionBar
 import com.example.notecast.presentation.screen.dialog.CreateFolderDialog

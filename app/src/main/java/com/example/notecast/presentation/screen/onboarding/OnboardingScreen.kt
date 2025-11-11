@@ -9,6 +9,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -20,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.notecast.R
+import com.example.notecast.presentation.theme.backgroundPrimary
 import com.example.notecast.presentation.theme.backgroundSecondary
 import com.example.notecast.presentation.theme.cyan
 
@@ -65,72 +68,85 @@ fun OnboardingScreen(
 ) {
     val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
     val scope = rememberCoroutineScope()
-
-    Box(
+    Surface(
         modifier = Modifier
             .fillMaxSize()
-            .background(brush = backgroundSecondary) // Nền gradient của bạn
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .align(Alignment.Center)
-
-                .padding(bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1.0f)
-            ) { page ->
-                OnboardingPage(item = onboardingPages[page])
-            }
-
-            Button(
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = cyan
-                ),
-                onClick = {
-                    if (pagerState.currentPage < onboardingPages.size - 1) {
-                        scope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        }
-                    } else {
-                        // Đã đến trang cuối, chuyển sang màn hình chính
-                        onOnboardingFinished()
-                    }
-                },
+            .background(brush = backgroundSecondary),
+        color = Color.Transparent
+    ){
+        Scaffold(
+            containerColor = Color.Transparent,
+            modifier = Modifier.fillMaxSize(),
+        ){paddingValues ->
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .height(56.dp)
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                Text(
-                    text = if (pagerState.currentPage == onboardingPages.size - 1) "Bắt đầu ngay" else "Tiếp theo",
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .align(Alignment.Center)
 
-                    color = Color.White,
-                    fontSize = 18.sp,
+                        .padding(bottom = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.weight(1.0f)
+                    ) { page ->
+                        OnboardingPage(item = onboardingPages[page])
+                    }
 
-                )
-                Icon(
-                    painter = painterResource(R.drawable.outline_arrow_forward_24),
-                    contentDescription = null,
-                )
-            }
+                    Button(
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = cyan
+                        ),
+                        onClick = {
+                            if (pagerState.currentPage < onboardingPages.size - 1) {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                }
+                            } else {
+                                // Đã đến trang cuối, chuyển sang màn hình chính
+                                onOnboardingFinished()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .height(56.dp)
+                    ) {
+                        Text(
+                            text = if (pagerState.currentPage == onboardingPages.size - 1) "Bắt đầu ngay" else "Tiếp theo",
 
-            // Text "Miễn phí + Không quảng cáo" chỉ ở trang đầu
-            if (pagerState.currentPage == 0) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Miễn phí + Không quảng cáo",
-                   color = Color.LightGray
-                )
-            }else {
-                Spacer(Modifier.height(12.dp))
+                            color = Color.White,
+                            fontSize = 18.sp,
+
+                            )
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_forward_24),
+                            contentDescription = null,
+                        )
+                    }
+
+                    // Text "Miễn phí + Không quảng cáo" chỉ ở trang đầu
+                    if (pagerState.currentPage == 0) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Miễn phí + Không quảng cáo",
+                            color = Color.LightGray
+                        )
+                    }else {
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
             }
         }
     }
+
+
 }
 
 @Preview(showBackground = true)

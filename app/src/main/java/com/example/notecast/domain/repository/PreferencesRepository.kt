@@ -1,30 +1,17 @@
 package com.example.notecast.domain.repository
 
-import android.content.Context
-import android.content.SharedPreferences
+import kotlinx.coroutines.flow.Flow
 
-/**
- * Class đơn giản để quản lý SharedPreferences.
- * (Trong một dự án Hilt, bạn nên inject cái này thay vì tạo thủ công)
- */
-class PreferencesRepository(context: Context) {
+interface PreferencesRepository {
+    // Ví dụ: Lưu trữ trạng thái Onboarding
+    val isOnboardingCompleted: Flow<Boolean>
+    suspend fun setOnboardingCompleted(isCompleted: Boolean)
 
-    private val prefsName = "notecast_prefs"
-    private val keySeenOnboarding = "seen_onboarding"
-    private val preferences: SharedPreferences = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+    // Ví dụ: Lấy tham số cấu hình tóm tắt
+    val summaryModel: Flow<String>
+    suspend fun setSummaryModel(model: String) // Thêm hàm set cho summary model
 
-    /**
-     * Kiểm tra xem người dùng đã xem Onboarding chưa.
-     * Mặc định là false (chưa xem).
-     */
-    fun hasSeenOnboarding(): Boolean {
-        return preferences.getBoolean(keySeenOnboarding, false)
-    }
-
-    /**
-     * Đánh dấu là người dùng đã xem Onboarding.
-     */
-    fun setSeenOnboarding() {
-        preferences.edit().putBoolean(keySeenOnboarding, true).apply()
-    }
+    // Thêm các hàm Onboarding mới (has/set)
+    val hasSeenOnboarding: Flow<Boolean>
+    suspend fun setSeenOnboarding(seen: Boolean)
 }

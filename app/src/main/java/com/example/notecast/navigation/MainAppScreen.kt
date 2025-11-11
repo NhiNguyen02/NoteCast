@@ -32,6 +32,7 @@ import com.example.notecast.presentation.screen.filter.FilterScreen
 import com.example.notecast.presentation.screen.dialog.CreateNoteDialog
 import com.example.notecast.presentation.screen.folderscreen.FolderScreen
 import com.example.notecast.presentation.screen.homescreen.HomeScreen
+import com.example.notecast.presentation.screen.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.screen.record.RecordingScreen
 import com.example.notecast.presentation.screen.settingsscreen.SettingsScreen
 import com.example.notecast.presentation.theme.backgroundPrimary
@@ -141,6 +142,16 @@ fun MainAppScreen() {
                         }
                     )
                 }
+
+                composable(
+                    route = Screen.NoteEdit.routeWithArgs,
+                    arguments = Screen.NoteEdit.arguments
+                ) {
+                    // ViewModel (Hilt) sẽ tự động lấy noteId từ arguments
+                    NoteEditScreen(
+                        onBackClick = { appNavController.popBackStack() }
+                    )
+                }
             }
 
             // Show Filter overlay full-screen
@@ -161,7 +172,7 @@ fun MainAppScreen() {
                         showCreateDialog = false
                         when (type) {
                             "record" -> appNavController.navigate(Screen.Recording.route)
-                            "text" -> { /* handle text note */ }
+                            "text" -> { appNavController.navigate(route = Screen.NoteEdit.createRoute(0)) }
                         }
                     },
                     startAutoSummary = true

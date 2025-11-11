@@ -137,7 +137,8 @@ fun NoteCard(
                             // TODO: Thêm icon pin_filled và pin_border vào res/drawable
                             painter = painterResource( R.drawable.pin ),
                             contentDescription = "Pin",
-                            tint = if (note.isPinned) Color(0xFF6200EE) else Color.Gray // Màu tím khi Pin
+                            tint = if (note.isPinned) Color(0xFF6200EE) else Color.Gray, // Màu tím khi Pin
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     // Nút Favorite (Yêu thích)
@@ -146,7 +147,8 @@ fun NoteCard(
                             // TODO: Thêm icon heart_filled và heart_border vào res/drawable
                             painter = painterResource(R.drawable.heart ),
                             contentDescription = "Favorite",
-                            tint = if (note.isFavorite) Color.Red else Color.Gray
+                            tint = if (note.isFavorite) Color.Red else Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -27,6 +28,7 @@ import com.example.notecast.navigation.Screen
 import com.example.notecast.presentation.theme.backgroundPrimary
 import com.example.notecast.presentation.theme.textGradient
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun SplashScreen(
@@ -37,9 +39,9 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         delay(2000)
 
-
+        val hasSeenOnboarding = preferences.hasSeenOnboarding.first()
         // Kiểm tra xem đã xem onboarding chưa
-        val route = if (preferences.hasSeenOnboarding()) {
+        val route = if (hasSeenOnboarding) {
             Screen.Main.route //
         } else {
             Screen.Onboarding.route

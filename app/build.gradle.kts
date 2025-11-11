@@ -66,4 +66,6 @@ dependencies {
     // Thêm dependency cho Material Icons (extended)
     // Thay đổi version nếu bạn dùng compose version khác.
     implementation("androidx.compose.material:material-icons-extended:1.4.3")
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 }

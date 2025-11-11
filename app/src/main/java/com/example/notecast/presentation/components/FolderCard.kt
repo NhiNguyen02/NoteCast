@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.notecast.domain.entities.Folder
+import com.example.notecast.domain.model.Folder
 
 // --- Hằng số giả lập ---
 val cardHeight: Dp = 80.dp
