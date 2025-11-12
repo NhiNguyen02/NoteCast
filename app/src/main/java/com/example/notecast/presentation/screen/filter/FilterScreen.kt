@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.notecast.presentation.theme.*
 import androidx.compose.foundation.interaction.MutableInteractionSource as InteractionSourceAlias
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** draw a thin divider at bottom */
 private fun Modifier.bottomDivider(color: Color, strokeWidth: Dp = 1.dp) = this.then(
@@ -57,12 +60,16 @@ private enum class FilterFooterButton { NONE, CLEAR, APPLY }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterScreen(onClose: () -> Unit) {
+    // coroutine scope for delayed close so Apply shows pressed color
+    val scope = rememberCoroutineScope()
+
     // sample data & UI state
     val formats = listOf(
         Triple("Ghi âm giọng nói", "23 ghi chú", 23),
         Triple("Ghi chú văn bản", "45 ghi chú", 45)
     )
-    var selectedFormats by remember { mutableStateOf(setOf(0)) }
+    // single-selection: index of selected format, -1 = none
+    var selectedFormat by remember { mutableStateOf(0) }
 
     val folders = remember {
         mutableStateListOf(
@@ -72,13 +79,15 @@ fun FilterScreen(onClose: () -> Unit) {
             FolderItem("Dự án", 13, FolderColor.GREEN)
         )
     }
-    var selectedFolders by remember { mutableStateOf(setOf(0)) }
+    // single-selection for folder; 0 = "Tất cả", -1 = none
+    var selectedFolder by remember { mutableStateOf(0) }
 
     val statuses = listOf(
         StatusItem("Ghi chú đã ghim", "Hiển thị ghi chú quan trọng", 7, StatusType.PIN),
         StatusItem("Ghi chú yêu thích", "Ghi chú được đánh dấu yêu thích", 12, StatusType.HEART)
     )
-    var selectedStatuses by remember { mutableStateOf(setOf(1)) }
+    // single-selection for status, -1 = none
+    var selectedStatus by remember { mutableStateOf(1) }
 
     // Shared horizontal padding for inner content
     val horizontalPadding = 16.dp
@@ -114,7 +123,7 @@ fun FilterScreen(onClose: () -> Unit) {
         fontWeight = FontWeight.SemiBold
     )
 
-    // Headings "Định dạng" / "Trạng thái" style (bigger & bolder per request)
+    // Headings "Định dạng" / "Trạng thái" / "Thư mục" style (bigger & bolder per request)
     val sectionHeadingStyle = TextStyle(
         fontSize = 16.sp,
         fontWeight = FontWeight.Bold,
@@ -166,7 +175,7 @@ fun FilterScreen(onClose: () -> Unit) {
 
                     Text(
                         text = "Bộ lọc",
-                        style = TextStyle(brush = textGradient, fontSize = 20.sp)
+                        style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, brush = textGradient)
                     )
                 }
 
@@ -199,7 +208,7 @@ fun FilterScreen(onClose: () -> Unit) {
                     ) {
                         // "Định dạng" heading (bigger & bolder)
                         Text("Định dạng", style = sectionHeadingStyle)
-                        Text("${selectedFormats.size} đã chọn", style = sectionCountStyle)
+                        Text("${if (selectedFormat >= 0) 1 else 0} đã chọn", style = sectionCountStyle)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -207,7 +216,7 @@ fun FilterScreen(onClose: () -> Unit) {
                 // Định dạng rows (consistent size and typography) — SELECTION INDICATOR IS CIRCULAR
                 itemsIndexed(formats) { index, triple ->
                     val (title, subtitle, count) = triple
-                    val selected = selectedFormats.contains(index)
+                    val selected = selectedFormat == index
                     val iconFixedTint = if (index == 0) Color(0xFF8555FF) else Color(0xFF3ECF9A)
                     val countFixedColor = iconFixedTint
 
@@ -222,7 +231,7 @@ fun FilterScreen(onClose: () -> Unit) {
                                 else Modifier.border(BorderStroke(1.dp, Color(0xFFE8E8F0)), RoundedCornerShape(12.dp))
                             )
                             .clickable {
-                                selectedFormats = if (selected) selectedFormats - index else selectedFormats + index
+                                selectedFormat = if (selected) -1 else index
                             }
                             .padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -279,20 +288,27 @@ fun FilterScreen(onClose: () -> Unit) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Thư mục", style = sectionHeadingStyle)
-                        Text("Tất cả", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text("Tất cả", style = sectionCountStyle)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // Thư mục rows
                 itemsIndexed(folders) { idx, folder ->
+                    val selected = selectedFolder == idx
+
                     FolderRow(
                         name = folder.name,
                         count = folder.count,
                         color = folder.color,
-                        selected = selectedFolders.contains(idx),
+                        selected = selected,
                         onClick = {
-                            selectedFolders = if (selectedFolders.contains(idx)) selectedFolders - idx else selectedFolders + idx
+                            selectedFolder = when {
+                                idx == 0 -> if (selectedFolder == 0) -1 else 0
+                                selectedFolder == 0 -> idx
+                                selectedFolder == idx -> -1
+                                else -> idx
+                            }
                         },
                         cardHeight = cardHeight,
                         titleTextStyle = titleTextStyle,
@@ -306,14 +322,14 @@ fun FilterScreen(onClose: () -> Unit) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         // "Trạng thái" heading (bigger & bolder)
                         Text("Trạng thái", style = sectionHeadingStyle)
-                        Text("${selectedStatuses.size} đã chọn", style = sectionCountStyle)
+                        Text("${if (selectedStatus >= 0) 1 else 0} đã chọn", style = sectionCountStyle)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // Trạng thái rows
                 itemsIndexed(statuses) { index, status ->
-                    val selected = selectedStatuses.contains(index)
+                    val selected = selectedStatus == index
                     StatusRow(
                         title = status.title,
                         subtitle = status.subtitle,
@@ -321,7 +337,7 @@ fun FilterScreen(onClose: () -> Unit) {
                         type = status.type,
                         selected = selected,
                         onClick = {
-                            selectedStatuses = if (selected) selectedStatuses - index else selectedStatuses + index
+                            selectedStatus = if (selected) -1 else index
                         },
                         cardHeight = cardHeight,
                         titleTextStyle = titleTextStyle,
@@ -340,12 +356,13 @@ fun FilterScreen(onClose: () -> Unit) {
                     .padding(horizontal = horizontalPadding, vertical = 14.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    // Left: "Xóa bộ lọc" — outlined-looking by default (light white bg + subtle border), becomes filled PrimaryAccent when pressed
                     if (pressedButton == FilterFooterButton.CLEAR) {
                         Button(
                             onClick = {
-                                selectedFormats = emptySet()
-                                selectedFolders = emptySet()
-                                selectedStatuses = emptySet()
+                                selectedFormat = -1
+                                selectedFolder = -1
+                                selectedStatus = -1
                                 pressedButton = FilterFooterButton.CLEAR
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent, contentColor = Color.White),
@@ -359,9 +376,9 @@ fun FilterScreen(onClose: () -> Unit) {
                     } else {
                         OutlinedButton(
                             onClick = {
-                                selectedFormats = emptySet()
-                                selectedFolders = emptySet()
-                                selectedStatuses = emptySet()
+                                selectedFormat = -1
+                                selectedFolder = -1
+                                selectedStatus = -1
                                 pressedButton = FilterFooterButton.CLEAR
                             },
                             border = BorderStroke(1.dp, footerOutlineColor),
@@ -380,10 +397,16 @@ fun FilterScreen(onClose: () -> Unit) {
 
                     Spacer(modifier = Modifier.width(12.dp))
 
+                    // Right: "Áp dụng" — now set pressed state then delay closing so the button shows purple
                     Button(
                         onClick = {
-                            pressedButton = FilterFooterButton.APPLY
-                            onClose()
+                            // set pressed visual then close after a short delay so user sees the purple state
+                            scope.launch {
+                                pressedButton = FilterFooterButton.APPLY
+                                // small delay to let the color update be visible before closing
+                                delay(140)
+                                onClose()
+                            }
                         },
                         colors = if (pressedButton == FilterFooterButton.APPLY) {
                             ButtonDefaults.buttonColors(containerColor = PrimaryAccent, contentColor = Color.White)

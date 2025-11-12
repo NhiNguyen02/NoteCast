@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.notecast.presentation.theme.*
 import androidx.compose.foundation.interaction.MutableInteractionSource as InteractionSourceAlias
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private fun Modifier.bottomDivider(color: Color, strokeWidth: Dp = 1.dp) = this.then(
     Modifier.drawBehind {
@@ -53,6 +56,8 @@ private enum class FooterButton { NONE, CANCEL, APPLY }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SortScreen(onClose: () -> Unit) {
+    val scope = rememberCoroutineScope()
+
     data class SortOption(val title: String, val subtitle: String, val icon: ImageVector)
 
     val timeOptions = listOf(
@@ -145,7 +150,7 @@ fun SortScreen(onClose: () -> Unit) {
 
                     Text(
                         text = "Sắp xếp ghi chú",
-                        style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = PrimaryAccentDark)
+                        style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, brush = textGradient)
                     )
                 }
 
@@ -267,10 +272,14 @@ fun SortScreen(onClose: () -> Unit) {
 
                     Spacer(modifier = Modifier.width(12.dp))
 
+                    // Right: "Áp dụng" — set pressed visual then delay closing so the button shows purple
                     Button(
                         onClick = {
-                            pressedButton = FooterButton.APPLY
-                            onClose()
+                            scope.launch {
+                                pressedButton = FooterButton.APPLY
+                                delay(140)
+                                onClose()
+                            }
                         },
                         colors = if (pressedButton == FooterButton.APPLY) {
                             ButtonDefaults.buttonColors(containerColor = PrimaryAccent, contentColor = Color.White)
