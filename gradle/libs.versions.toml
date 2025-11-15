@@ -17,6 +17,9 @@ composeMaterial3Adaptive = "1.5.0-alpha07"
 navigationCompose = "2.9.5"
 uiToolingPreview = "1.9.4"
 uiTooling = "1.9.4"
+room_version = "2.8.3"
+serialization = "2.2.21"
+kotlinx-serialization = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +33,7 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
 
+
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "composeUi" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "composeMaterial3" }
@@ -38,9 +42,14 @@ androidx-compose-material3-adaptiveNavigationSuite = { module = "androidx.compos
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "uiToolingPreview" }
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "uiTooling" }
+androidx-room-runtime = {module = "androidx.room:room-runtime", version.ref = "room_version"}
+androidx-room-compiler = {module = "androidx.room:room-compiler", version.ref = "room_version"}
+androidx-room-ktx = {module = "androidx.room:room-ktx", version.ref = "room_version"}
+kotlinx-serialization-json = {module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization"}
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = {id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "serialization"}
 
