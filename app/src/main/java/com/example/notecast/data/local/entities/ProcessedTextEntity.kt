@@ -3,14 +3,10 @@ package com.example.notecast.data.local.entities
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.ForeignKey.Companion.CASCADE
 
-
-/**
- * Processed text (punctuated, summary, sentiment) derived from a transcript.
- * - transcriptId: FK -> transcript.id (ON DELETE CASCADE)
- */
 @Entity(
     tableName = "processed_text",
     foreignKeys = [ForeignKey(
@@ -18,7 +14,8 @@ import androidx.room.ForeignKey.Companion.CASCADE
         parentColumns = ["id"],
         childColumns = ["transcriptId"],
         onDelete = CASCADE
-    )]
+    )],
+    indices = [Index(value = ["transcriptId"])]
 )
 data class ProcessedTextEntity(
     @PrimaryKey val id: String,

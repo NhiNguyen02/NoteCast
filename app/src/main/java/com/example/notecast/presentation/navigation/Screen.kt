@@ -36,15 +36,15 @@ sealed class Screen(val route: String) {
     // New: recording route used when user selects "Ghi âm giọng nói"
     object Recording : Screen("recording")
     object NoteEdit : Screen("note_edit/{noteId}"){
-        fun createRoute(noteId: Int) = "note_edit/$noteId"
+        fun createRoute(noteId: String) = "note_edit/$noteId"
 
         // Định nghĩa tham số
         const val arg = "noteId"
         val routeWithArgs = "note_edit/{$arg}"
         val arguments = listOf(
             navArgument(arg) {
-                type = NavType.IntType
-                defaultValue = 0 // Mặc định là 0 (Tạo mới)
+                type = NavType.StringType
+                defaultValue = "0" // Mặc định là 0 (Tạo mới)
             }
         )
     }

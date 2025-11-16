@@ -3,14 +3,10 @@ package com.example.notecast.data.local.entities
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.ForeignKey.Companion.SET_NULL
 
-/**
- * Note entity that may reference processed_text.
- * - tags: stored as JSON string (use TypeConverter)
- * - processedTextId: nullable, ON DELETE SET NULL (keep note if processed_text removed)
- */
 @Entity(
     tableName = "note",
     foreignKeys = [ForeignKey(
@@ -18,13 +14,16 @@ import androidx.room.ForeignKey.Companion.SET_NULL
         parentColumns = ["id"],
         childColumns = ["processedTextId"],
         onDelete = SET_NULL
-    )]
+    )],
+    indices = [Index(value = ["processedTextId"])]
 )
 data class NoteEntity(
     @PrimaryKey val id: String,
     val title: String,
+    val content: String? = null,
     val processedTextId: String?,
-    val tags: String, // JSON string (List<String>) via Converters
+    val tags: String,
+    val mindMapJson: String? = null,
     val isFavorite: Boolean = false,
     val folderId: String? = null,
     val colorHex: String? = null,

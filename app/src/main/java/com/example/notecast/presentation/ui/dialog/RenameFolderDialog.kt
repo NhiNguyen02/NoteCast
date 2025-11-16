@@ -1,6 +1,5 @@
 package com.example.notecast.presentation.ui.dialog
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,14 +18,12 @@ import androidx.compose.ui.window.Dialog
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
 
-
 @Composable
 fun RenameFolderDialog(
-    folderToRename: Folder, // Thư mục hiện tại (để lấy tên mặc định)
+    folderToRename: Folder,
     onDismiss: () -> Unit,
     onConfirm: (newName: String) -> Unit
 ) {
-    // State cho tên thư mục, khởi tạo bằng tên thư mục cũ
     var newFolderName by remember { mutableStateOf(folderToRename.name) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -109,7 +106,7 @@ fun RenameFolderDialog(
 
                 // Nút Đổi tên
                 Button(
-                    onClick = { onConfirm(newFolderName) },
+                    onClick = { onConfirm(newFolderName.trim()) },
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp)
@@ -133,12 +130,14 @@ fun RenameFolderDialog(
 @Composable
 fun PreviewRenameFolderDialog() {
     MaterialTheme {
-        // Dữ liệu giả lập cho Preview
         val mockFolder = Folder(
-            id = 1,
+            id = "1",
             name = "Công việc",
-            noteCount = 5,
-            color = Color.Blue
+            colorHex = "#3CB371",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+            isSynced = false,
+            isDeleted = false
         )
         RenameFolderDialog(
             folderToRename = mockFolder,

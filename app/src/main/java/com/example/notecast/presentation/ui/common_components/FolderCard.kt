@@ -1,5 +1,6 @@
 package com.example.notecast.presentation.ui.common_components
 
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,13 +35,23 @@ val PrimaryAccent = Color(0xFF7B68EE) // Màu Tím chủ đạo (Accent Color)
 fun FolderCard(
     folder: Folder,
     isSelectionMode: Boolean,
+    isSelected: Boolean,
+    noteCount: Int = 0,
     onFolderClick: (Folder) -> Unit,
     onFolderLongClick: (Folder) -> Unit,
     onToggleSelect: (Folder) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val folderTint = folder.color
-    val isSelected = folder.isSelected
+    // Convert hex (domain model) -> Compose Color
+    fun hexToColor(hex: String?): Color {
+        return try {
+            if (hex.isNullOrBlank()) PrimaryAccent else Color(AndroidColor.parseColor(hex))
+        } catch (e: Exception) {
+            PrimaryAccent
+        }
+    }
+
+    val folderTint = hexToColor(folder.colorHex)
 
     val clickHandler = {
         if (isSelectionMode) {
@@ -86,7 +98,7 @@ fun FolderCard(
                 ) {
                     if (isSelected) {
                         Icon(
-                            Icons.Default.Check,
+                            Icons.Filled.Check,
                             contentDescription = "selected",
                             tint = Color.White,
                             modifier = Modifier.size(16.dp)
@@ -101,8 +113,8 @@ fun FolderCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(folderTint.copy(0.15f))
-                    .border(1.dp,folderTint.copy(0.5f), shape = RoundedCornerShape(8.dp)),
+                    .background(folderTint.copy(alpha = 0.15f))
+                    .border(1.dp, folderTint.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -123,7 +135,7 @@ fun FolderCard(
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "${folder.noteCount} ghi chú",
+                text = "$noteCount ghi chú",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = Color(0xff757575)
             )

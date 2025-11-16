@@ -3,13 +3,10 @@ package com.example.notecast.data.local.entities
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.ForeignKey.Companion.CASCADE
 
-/**
- * Transcript result for an audio file.
- * - audioId: FK -> audio.id (ON DELETE CASCADE)
- */
 @Entity(
     tableName = "transcript",
     foreignKeys = [ForeignKey(
@@ -17,7 +14,8 @@ import androidx.room.ForeignKey.Companion.CASCADE
         parentColumns = ["id"],
         childColumns = ["audioId"],
         onDelete = CASCADE
-    )]
+    )],
+    indices = [Index(value = ["audioId"])]
 )
 data class TranscriptEntity(
     @PrimaryKey val id: String,

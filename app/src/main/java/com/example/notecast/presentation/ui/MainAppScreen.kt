@@ -170,7 +170,7 @@ fun MainAppScreen() {
                         showCreateDialog = false
                         when (type) {
                             "record" -> appNavController.navigate(Screen.Recording.route)
-                            "text" -> { appNavController.navigate(route = Screen.NoteEdit.createRoute(0)) }
+                            "text" -> { appNavController.navigate(Screen.NoteEdit.createRoute("0")) }
                         }
                     },
                     startAutoSummary = true

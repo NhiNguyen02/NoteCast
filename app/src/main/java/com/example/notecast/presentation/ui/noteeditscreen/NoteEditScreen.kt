@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -32,10 +33,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.lifecycle.ViewModel // Cần import cho Mock ViewModel
+import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.example.notecast.domain.model.Note
+import com.example.notecast.presentation.viewmodel.NoteEditViewModel
+import com.example.notecast.presentation.viewmodel.NoteEditViewModelContract
 import com.example.notecast.presentation.viewmodel.NoteEditScreenState
 import com.example.notecast.R
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
@@ -44,7 +47,8 @@ import com.example.notecast.presentation.theme.Purple
 @Composable
 fun NoteEditScreen(
     onBackClick: () -> Unit = {},
-    viewModel: NoteEditViewModelMock = hiltViewModel()
+
+    viewModel: NoteEditViewModelContract = hiltViewModel<NoteEditViewModel>()
 ) {
     val state by viewModel.state.collectAsState()
     val note = state.note
@@ -53,103 +57,104 @@ fun NoteEditScreen(
         topBar = {
             NoteEditTopBar(
                 onBackClick = onBackClick,
-                isPinned = note.isPinned,
-                isFavorite = note.isFavorite,
+                isPinned = false,
+                isFavorite = note?.isFavorite ?: false,
                 onTogglePin = viewModel::togglePin,
                 onToggleFavorite = viewModel::toggleFavorite,
             )
         },
-        containerColor = Color.Transparent // Đảm bảo Scaffold không có màu nền mặc định
+        containerColor = Color.Transparent
     ) { paddingValues ->
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
 
-                // 1. Thông tin thư mục và các chips AI
+        if (state.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (note != null) {
+            // Nội dung chính
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
+
                 NoteInfoAndActions(
-                    folderName = note.folder?.name ?: "Chưa phân loại",
-                    lastEdited = note.lastEdited,
+
+                    folderName = "Chưa phân loại", // TODO: Cần logic tải Folder
+                    lastEdited = Date(note.updatedAt),
                     isProcessing = state.isSummarizing,
                     onSummarize = viewModel::summarizeNote,
                     onNormalize = viewModel::normalizeNote,
                     onMindMap = viewModel::generateMindMap
                 )
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-            ) {
-                // 2. Trường nhập Tiêu đề
-                BasicTextField(
-                    value = note.title,
-                    onValueChange = viewModel::onTitleChange,
-                    textStyle = TextStyle(
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    ),
-                    decorationBox = { innerTextField ->
-                        // Placeholder cho Tiêu đề
-                        if (note.title.isEmpty()) {
-                            Text("Tiêu đề...",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Gray.copy(alpha = 0.5f)
-                            )
-                        }
-                        innerTextField()
-                    },
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 5.dp)
-
-                )
-
-                // 3. Ngày/Giờ
-                Text(
-                    text = formatNoteDate(note.lastEdited),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 20.dp)
-                )
-
-                // 4. Khu vực soạn thảo Nội dung
-                BasicTextField(
-                    value = note.content,
-                    onValueChange = viewModel::onContentChange,
-                    textStyle = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color.Black
-                    ),
-                    decorationBox = { innerTextField ->
-                        // Placeholder cho Nội dung
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xffE5E7EB))
-                                .padding(16.dp) // Thêm padding bên trong nền xám
-                        ) {
-                            if (note.content.isEmpty()) {
-                                Text("Bắt đầu soạn...",
-                                    fontSize = 16.sp,
+                        .fillMaxSize()
+                        .padding(16.dp),
+                ) {
+                    BasicTextField(
+                        value = note.title,
+                        onValueChange = viewModel::onTitleChange,
+                        textStyle = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        ),
+                        decorationBox = { innerTextField ->
+                            if (note.title.isEmpty()) {
+                                Text("Tiêu đề...",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
                                     color = Color.Gray.copy(alpha = 0.5f)
                                 )
                             }
                             innerTextField()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .verticalScroll(rememberScrollState())
-                        .background(Color(0xffE5E7EB)),// Cho phép khu vực này chiếm hết không gian còn lại
-                )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 5.dp)
+
+                    )
+
+                    Text(
+                        text = formatNoteDate(note.updatedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xffE5E7EB))
+                            .padding(16.dp)
+                    ) {
+                        BasicTextField(
+                            value = note.content ?: "", // SỬA: Xử lý content null
+                            onValueChange = viewModel::onContentChange,
+                            textStyle = TextStyle(
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            ),
+                            decorationBox = { innerTextField ->
+                                if (note.content.isNullOrEmpty()) {
+                                    Text("Bắt đầu soạn...",
+                                        fontSize = 16.sp,
+                                        color = Color.Gray.copy(alpha = 0.5f)
+                                    )
+                                }
+                                innerTextField()
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                        )
+                    }
+                }
             }
         }
     }
@@ -168,7 +173,6 @@ fun NoteEditTopBar(
 ) {
     TopAppBar(
         title = {
-            // Giữ tiêu đề ẩn (giống layout Row cũ)
             Text(
                 "Text Notes App",
                 style = MaterialTheme.typography.titleMedium,
@@ -176,25 +180,23 @@ fun NoteEditTopBar(
             )
         },
         navigationIcon = {
-            // Nút Quay lại (Gốc bên trái)
             IconButton(onClick = onBackClick) {
                 Icon(Icons.Filled.ArrowBackIos, contentDescription = "Quay lại", tint = Purple)
             }
         },
         actions = {
-            // Các hành động (Ghim, Yêu thích - Gốc bên phải)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Nút Ghim
-                IconButton(onClick = onTogglePin) {
-                    Icon(
-                        Icons.Default.PushPin,
-                        contentDescription = "Ghim",
-                        tint = if (isPinned) Purple else Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+//                IconButton(onClick = onTogglePin) {
+//                    Icon(
+//                        Icons.Default.PushPin,
+//                        contentDescription = "Ghim",
+//                        tint = if (isPinned) Purple else Color.Gray,
+//                        modifier = Modifier.size(20.dp)
+//                    )
+//                }
 
-                // Nút lưu
+                // Nút lưu (Yêu thích?)
                 IconButton(onClick = onToggleFavorite) {
                     Icon(
                         painter = painterResource(R.drawable.save),
@@ -205,7 +207,6 @@ fun NoteEditTopBar(
                 }
             }
         },
-        // Áp dụng màu trong suốt (giống FolderTopAppBar)
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Transparent,
         )
@@ -218,12 +219,11 @@ fun NoteEditTopBar(
 fun NoteInfoAndActions(
     folderName: String,
     lastEdited: Date,
-    isProcessing: Boolean, // Để điều khiển trạng thái loading của chip
+    isProcessing: Boolean,
     onSummarize: () -> Unit,
     onNormalize: () -> Unit,
     onMindMap: () -> Unit
 ) {
-    // 1. Thư mục (Chip) - Vị trí: Ngay dưới Top Bar, bên trái
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -235,23 +235,22 @@ fun NoteInfoAndActions(
                     painter = painterResource(R.drawable.folder_outline),
                     tint = Color.White,
                     contentDescription = "folder",
-                    modifier = Modifier.size(20.dp) // Thêm kích thước
+                    modifier = Modifier.size(20.dp)
                 )
             },
-            onClick = { /* Mở Dialog chọn thư mục */ }, // TODO: Implement dialog
+            onClick = { /* Mở Dialog chọn thư mục */ },
             label = { Text(folderName, fontSize = 14.sp) },
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = Color(0xffCCA8FF), // Màu nền chip mờ
-                labelColor = Color.White // Màu chữ chip
+                containerColor = Color(0xffCCA8FF),
+                labelColor = Color.White
             ),
             shape = RoundedCornerShape(8.dp),
         )
     }
     Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
 
-    // 2. Các Chips chức năng AI - Vị trí: Dưới Folder Chip
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp), // Khoảng cách giữa các chip
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .padding(vertical = 12.dp, horizontal = 16.dp)
             .fillMaxWidth()
@@ -264,7 +263,6 @@ fun NoteInfoAndActions(
                 isLoading = isProcessing, // Sử dụng state để hiển thị loading
                 backgroundBrush = PopUpBackgroundBrush,
                 labelColor = Color.White,
-
             )
         }
         item {
@@ -348,7 +346,8 @@ fun ActionChip(
 }
 
 // Hàm tiện ích định dạng ngày tháng
-fun formatNoteDate(date: Date): String {
+fun formatNoteDate(timestamp: Long): String {
+    val date = Date(timestamp)
     val todayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val currentDay = todayFormatter.format(Date())
     val noteDay = todayFormatter.format(date)
@@ -363,24 +362,24 @@ fun formatNoteDate(date: Date): String {
 }
 
 // --- MOCK VIEWMODEL CHO PREVIEW ---
-// Khắc phục lỗi Render Problem do Hilt
-class NoteEditViewModelMock : ViewModel() {
+class NoteEditViewModelMock : ViewModel(), NoteEditViewModelContract {
     private val mockNote = Note(
+        id = "preview",
         title = "Tiêu đề ghi chú mẫu",
         content = "Nội dung mẫu để xem trước giao diện. Đây là một đoạn văn bản dài hơn một chút để kiểm tra khu vực soạn thảo.",
-        isPinned = true,
-        lastEdited = Date()
+        updatedAt = System.currentTimeMillis()
     )
     private val _state = MutableStateFlow(NoteEditScreenState(note = mockNote, isSummarizing = false))
-    val state = _state.asStateFlow()
+    override val state = _state.asStateFlow()
 
-    fun togglePin() {}
-    fun toggleFavorite() {}
-    fun summarizeNote() {}
-    fun normalizeNote() {}
-    fun generateMindMap() {}
-    fun onTitleChange(newTitle: String) {}
-    fun onContentChange(newContent: String) {}
+    override fun togglePin() {}
+    override fun toggleFavorite() {}
+    override fun summarizeNote() {}
+    override fun normalizeNote() {}
+    override fun generateMindMap() {}
+    override fun onTitleChange(newTitle: String) {}
+    override fun onContentChange(newContent: String) {}
+    override fun saveNote() {}
 }
 
 
