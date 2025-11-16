@@ -52,3 +52,4 @@ data class Note(
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false
 )
+

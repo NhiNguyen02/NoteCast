@@ -139,15 +139,6 @@ fun FolderCard(
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = Color(0xff757575)
             )
-
-
-
-//            // 4. Số lượng ở cuối
-//            Text(
-//                text = folder.noteCount.toString(),
-//                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-//                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-//            )
         }
     }
 }
