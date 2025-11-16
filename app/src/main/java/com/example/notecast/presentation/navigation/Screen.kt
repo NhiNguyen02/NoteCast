@@ -1,4 +1,4 @@
-package com.example.notecast.navigation
+package com.example.notecast.presentation.navigation
 
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
