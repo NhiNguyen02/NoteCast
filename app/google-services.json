@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "699212780114",
+    "project_id": "notecastdatabase",
+    "storage_bucket": "notecastdatabase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:699212780114:android:e6c9ab39b8aecba5b3858b",
+        "android_client_info": {
+          "package_name": "com.example.notecast"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "699212780114-sjes5r1ilqsumpgrqpkt9sg1s0476vba.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFThYsjgVthqAur3V30S4nW1-bSCfdP54"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "699212780114-sjes5r1ilqsumpgrqpkt9sg1s0476vba.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

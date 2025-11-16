@@ -1,18 +1,27 @@
 package com.example.notecast.data.repository
 
+import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.preferencesDataStore
 import com.example.notecast.domain.repository.PreferencesRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+// Định nghĩa DataStore
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
 @Singleton
 class PreferencesRepositoryImpl @Inject constructor(
-    private val dataStore: DataStore<Preferences>
+    @ApplicationContext private val context: Context
 ) : PreferencesRepository {
 
+    private val dataStore = context.dataStore
+
+    // Keys
     private object PreferencesKeys {
         val IS_ONBOARDING_COMPLETED = booleanPreferencesKey("is_onboarding_completed")
         val SUMMARY_MODEL = stringPreferencesKey("summary_model")
