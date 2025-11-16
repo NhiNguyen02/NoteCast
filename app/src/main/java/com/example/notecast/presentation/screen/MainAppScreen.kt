@@ -35,7 +35,7 @@ import com.example.notecast.presentation.screen.homescreen.HomeScreen
 import com.example.notecast.presentation.screen.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.screen.record.RecordingScreen
 import com.example.notecast.presentation.screen.settingsscreen.SettingsScreen
-import com.example.notecast.presentation.theme.backgroundPrimary
+import com.example.notecast.presentation.theme.Background
 import kotlinx.coroutines.launch
 
 @Composable
@@ -94,7 +94,7 @@ fun MainAppScreen() {
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .background(brush = backgroundPrimary),
+                .background(brush = Background),
             color = Color.Transparent
         ) {
             NavHost(

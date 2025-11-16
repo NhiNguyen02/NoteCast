@@ -27,9 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.notecast.R // Đảm bảo import R
-import com.example.notecast.presentation.theme.backgroundPrimary
-import com.example.notecast.presentation.theme.backgroundTertiary
-import com.example.notecast.presentation.theme.lightPurple
+import com.example.notecast.presentation.theme.Background
+import com.example.notecast.presentation.theme.MenuBackgroundBrush
+import com.example.notecast.presentation.theme.Purple
 import kotlinx.coroutines.launch
 
 
@@ -45,12 +45,10 @@ fun AppDrawerContent(
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxWidth(0.7f) // Chiếm 70% chiều rộng
-            .background(brush = backgroundTertiary),
+            .background(brush = MenuBackgroundBrush),
         drawerContainerColor = Color.Transparent
     ) {
-        Column(
-//            modifier = Modifier.padding(16.dp)
-        ) {
+        Column {
             // 1. Hàng chứa nút Đóng (X)
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -91,7 +89,7 @@ fun AppDrawerContent(
                 isSelected = currentRoute == Screen.Folders.route,
                 onClick = {
                     onNavigate(Screen.Folders.route)
-                    backgroundPrimary
+                    Background
                     scope.launch { drawerState.close() } // Đóng menu
                 }
             )
@@ -137,7 +135,7 @@ private fun DrawerMenuItem(
 ) {
     // Màu sắc dựa trên trạng thái (đang chọn hay không)
     val backgroundColor = if (isSelected) Color.White.copy(0.3f) else Color.Transparent
-    val contentColor = if (isSelected) lightPurple else Color.White
+    val contentColor = if (isSelected) Purple else Color.White
 
     Row(
         modifier = Modifier

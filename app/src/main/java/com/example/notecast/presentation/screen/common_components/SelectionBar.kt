@@ -2,12 +2,9 @@ package com.example.notecast.presentation.components
 
 // Có thể đặt trong com.example.notecast.presentation.components/SelectionBar.kt
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.NoteAlt
 import androidx.compose.material3.*
@@ -17,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.example.notecast.presentation.theme.lightPurple
+import com.example.notecast.presentation.theme.Purple
 
 @Composable
 fun SelectionBar(
@@ -86,7 +83,7 @@ private fun ActionChip(
 ) {
 
     val colorEdit = if (enabled) Color.Red else Color.Gray.copy(alpha = 0.6f)
-    val colorRemove = if (enabled) lightPurple else Color.Gray.copy(alpha = 0.6f)
+    val colorRemove = if (enabled) Purple else Color.Gray.copy(alpha = 0.6f)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
