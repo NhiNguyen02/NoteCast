@@ -1,4 +1,4 @@
-package com.example.notecast.navigation
+package com.example.notecast.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -6,10 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.notecast.domain.repository.PreferencesRepository
+import com.example.notecast.presentation.ui.MainAppScreen
 // Import đúng: MainAppScreen nằm ở package navigation
-import com.example.notecast.navigation.MainAppScreen
-import com.example.notecast.presentation.screen.onboarding.OnboardingScreen
-import com.example.notecast.presentation.screen.splashscreen.SplashScreen
+import com.example.notecast.presentation.ui.onboarding.OnboardingScreen
+import com.example.notecast.presentation.ui.splashscreen.SplashScreen
 import kotlinx.coroutines.launch
 
 @Composable

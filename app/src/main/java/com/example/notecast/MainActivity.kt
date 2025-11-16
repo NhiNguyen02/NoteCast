@@ -4,14 +4,9 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.example.notecast.domain.repository.PreferencesRepository
-import com.example.notecast.navigation.RootNavGraph
-import com.example.notecast.presentation.theme.backgroundPrimary
+import com.example.notecast.presentation.navigation.RootNavGraph
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
