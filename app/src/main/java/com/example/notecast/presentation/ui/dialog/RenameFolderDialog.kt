@@ -130,6 +130,7 @@ fun RenameFolderDialog(
 @Composable
 fun PreviewRenameFolderDialog() {
     MaterialTheme {
+        // Dữ liệu giả lập cho Preview
         val mockFolder = Folder(
             id = "1",
             name = "Công việc",
