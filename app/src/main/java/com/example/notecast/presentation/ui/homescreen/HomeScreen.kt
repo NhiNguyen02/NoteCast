@@ -43,6 +43,9 @@ import com.example.notecast.presentation.ui.dialog.SelectFolderDialog
 import com.example.notecast.presentation.viewmodel.NoteListViewModel
 import kotlinx.coroutines.launch
 
+/**
+ * HomeScreen: nhẹ, không quản lý dialog. Khi user nhấn FAB, HomeScreen gọi onOpenCreateDialog()
+ */
 @Composable
 fun HomeScreen(
     drawerState: DrawerState,
@@ -182,6 +185,7 @@ private fun HomeScreenContent(
     onCloseSelectionMode: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val search = ""
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -235,7 +239,6 @@ private fun HomeScreenContent(
                         else scope.launch { drawerState.open() }
                     }
                 )
-
                 Text(
                     text = if (isSelectionMode) "Đã chọn ${selectedNoteIds.size}" else "NOTECAST",
                     fontSize = 24.sp,
