@@ -28,6 +28,7 @@ import com.example.notecast.presentation.ui.common_components.SelectionBar
 import com.example.notecast.presentation.ui.dialog.CreateFolderDialog
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.theme.TitleBrush
+import java.util.UUID
 
 
 data class UiFolder(

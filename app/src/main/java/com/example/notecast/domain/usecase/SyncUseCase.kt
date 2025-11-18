@@ -1,20 +1,23 @@
 package com.example.notecast.domain.usecase
 
-import com.example.notecast.domain.repository.AudioRepository
+import com.example.notecast.domain.repository.FolderRepository
 import com.example.notecast.domain.repository.NoteRepository
-import javax.inject.Inject // SỬA: Thêm import
+import javax.inject.Inject
 
 /**
- * High-level usecase to orchestrate sync.
+ * UseCase cấp cao để điều phối logic đồng bộ.
+ * ĐÃ CẬP NHẬT: Chỉ inject NoteRepository và FolderRepository.
  */
-// SỬA: Thêm @Inject constructor
 class SyncUseCase @Inject constructor(
-    private val audioRepo: AudioRepository,
-    private val noteRepo: NoteRepository
+    private val noteRepo: NoteRepository,
+    private val folderRepo: FolderRepository
+    // KHÔNG CẦN AudioRepository nữa
 ) {
     suspend operator fun invoke() {
-        // Simple orchestration: audio first, then notes
-        audioRepo.uploadPendingAudio()
+        // TODO: Xử lý logic đồng bộ (ví dụ: đẩy folder trước)
+        // folderRepo.syncPending()
+
+        // Sau đó đẩy các ghi chú (bao gồm cả audio...)
         noteRepo.syncPending()
     }
 }

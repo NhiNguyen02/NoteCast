@@ -1,86 +1,91 @@
 package com.example.notecast.data.repository
 
-import com.example.notecast.data.local.dao.FolderDao
 import com.example.notecast.data.local.dao.NoteDao
-import com.example.notecast.data.local.dao.ProcessedTextDao
-// SỬA: Import mapper
 import com.example.notecast.data.local.mapper.EntityMapper
 import com.example.notecast.domain.model.Note
 import com.example.notecast.domain.repository.NoteRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.Date
-import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
- * Implementation của NoteRepository.
- * Chỉ sử dụng Local DAOs (Room) theo yêu cầu.
+ * Implementation MỚI của NoteRepository.
+ * Chỉ phụ thuộc vào 1 DAO duy nhất: [NoteDao].
  */
+@Singleton
 class NoteRepositoryImpl @Inject constructor(
-    private val noteDao: NoteDao,
-    private val folderDao: FolderDao,
-    private val processedTextDao: ProcessedTextDao
-    // Đã bỏ qua Firebase/Firestore
+    private val noteDao: NoteDao // <-- CHỈ INJECT 1 DAO
 ) : NoteRepository {
 
-    override fun allNotes(): Flow<List<Note>> {
-        return noteDao.allNotes().map { entityList ->
-            entityList.map { entity ->
-                // TODO: Cần logic truy vấn FolderDao
-                EntityMapper.noteEntityToDomain(entity)
-            }
+    /**
+     * LẤY (READ): Sử dụng mapper [noteWithDetailsToDomain]
+     */
+    override fun getAllNotes(): Flow<List<Note>> {
+        // 1. Gọi DAO, lấy về Flow<List<NoteWithDetails>> (POJO)
+        return noteDao.getAllNotes().map { listNwd ->
+            // 2. Map POJO -> Domain Model
+            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
         }
     }
 
-    override suspend fun getNoteById(id: String): Note? {
-        val entity = noteDao.getById(id)
-        // TODO: Tải thư mục
-        return entity?.let { EntityMapper.noteEntityToDomain(it) }
+    override fun getNotesByFolder(folderId: String): Flow<List<Note>> {
+        return noteDao.getNotesByFolder(folderId).map { listNwd ->
+            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+        }
     }
 
-    override suspend fun insertNote(note: Note) {
-        val entity = EntityMapper.domainToNoteEntity(note).copy(
-            id = UUID.randomUUID().toString(), // Đảm bảo ID mới
-            isSynced = false,
-            isDeleted = false,
-            updatedAt = Date().time
-        )
-        noteDao.insert(entity)
+    override fun getUncategorizedNotes(): Flow<List<Note>> {
+        return noteDao.getUncategorizedNotes().map { listNwd ->
+            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+        }
     }
 
-    override suspend fun updateNote(note: Note) {
-        val existingEntity = noteDao.getById(note.id) ?: throw NoSuchElementException("Note không tồn tại để cập nhật")
+    override fun getNoteById(id: String): Flow<Note?> {
+        // 1. Gọi DAO, lấy về Flow<NoteWithDetails?> (POJO)
+        return noteDao.getNoteWithDetails(id).map { nwd ->
+            // 2. Map POJO -> Domain Model (nếu không null)
+            nwd?.let { EntityMapper.noteWithDetailsToDomain(it) }
+        }
+    }
 
-        val entity = EntityMapper.domainToNoteEntity(note).copy(
-            isSynced = false, // Đánh dấu cần đồng bộ
-            updatedAt = Date().time,
-            // Giữ nguyên các trường không có trong Model
-            isDeleted = existingEntity.isDeleted
-        )
-        noteDao.update(entity)
+    /**
+     * GHI (WRITE): Sử dụng các mapper "tách" (domainTo...Entity)
+     */
+    override suspend fun saveNote(note: Note) {
+        // "Tách" (split) 1 Domain Model [Note] thành 4 Entities
+        val noteEntity = EntityMapper.domainToNoteEntity(note).copy(isSynced = false)
+        val audioEntity = EntityMapper.domainToAudioEntity(note)?.copy(isSynced = false)
+        val transcriptEntity = EntityMapper.domainToTranscriptEntity(note)?.copy(isSynced = false)
+        val processedEntity = EntityMapper.domainToProcessedTextEntity(note)?.copy(isSynced = false)
+
+        // Ghi xuống CSDL
+        noteDao.upsertNote(noteEntity)
+
+        if (audioEntity != null) {
+            noteDao.upsertAudio(audioEntity)
+        }
+        if (transcriptEntity != null) {
+            noteDao.upsertTranscript(transcriptEntity)
+        }
+        if (processedEntity != null) {
+            noteDao.upsertProcessedText(processedEntity)
+        }
     }
 
     override suspend fun deleteNote(id: String) {
-        val entity = noteDao.getById(id)
-        if (entity != null) {
-            val deletedEntity = entity.copy(
-                isDeleted = true,
-                isSynced = false, // Đánh dấu cần đồng bộ (xóa)
-                updatedAt = Date().time
-            )
-            noteDao.update(deletedEntity)
-        }
+        // Dùng "xóa mềm"
+        noteDao.softDeleteNote(id, System.currentTimeMillis())
     }
 
     override suspend fun searchNotes(query: String): List<Note> {
-        // Cần thêm @Query hỗ trợ FTS hoặc LIKE trong NoteDao
+        // TODO: Cần implement logic tìm kiếm
         println("WARN: Search functionality is not yet implemented in DAO.")
         return emptyList()
     }
 
     override suspend fun syncPending() {
-        // Người dùng yêu cầu "chưa dùng firebase"
-        println("Sync logic is skipped (Firebase not included).")
+        // TODO: Implement sync logic
+        println("Sync logic is skipped.")
     }
 }
