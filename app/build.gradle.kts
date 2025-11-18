@@ -77,14 +77,27 @@ dependencies {
 
     // Thêm dependency cho Material Icons (extended)
     // Thay đổi version nếu bạn dùng compose version khác.
+    // Material Icons (extended)
     implementation("androidx.compose.material:material-icons-extended:1.4.3")
+    // DataStore Preferences
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    // Hilt Navigation Compose
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     //Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
     implementation("com.google.firebase:firebase-analytics")
 
+    // ONNX Runtime
+    implementation ("com.microsoft.onnxruntime:onnxruntime-android:1.17.1")
+    // Room
+//    val roomVersion = "2.8.3"
+//    implementation("androidx.room:room-runtime:$roomVersion")
+//    ksp("androidx.room:room-compiler:$roomVersion")
+//    implementation("androidx.room:room-ktx:$roomVersion")
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }
 
 //ksp {

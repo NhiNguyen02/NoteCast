@@ -34,9 +34,6 @@ val NoteItemBackground = Color(0xFFFFFFFF).copy(alpha = 0.7f)
 val PrimaryAccent = Color(0xFF7B4BFF)
 val PrimaryAccentDark = Color(0xFF5B2FE0)  // darker purple for title text / accents
 
-
-
-
 // Gradients (Brushes) - Khai báo cho việc sử dụng trực tiếp trong UI
 // Linear Gradient Brush từ trái sang phải (ngang)
 val LogoBrush = Brush.linearGradient(
@@ -45,7 +42,7 @@ val LogoBrush = Brush.linearGradient(
 
 // Linear Gradient Brush từ trên xuống dưới (dọc)
 val Background = Brush.linearGradient(
-    colors = listOf(Color(0xFF9BC6FB), Color(0xFFE6CEFF)),
+    colors = listOf(Color(0xFFE6CEFF), Color(0xFF9BC6FB)),
     start = Offset.Zero,
     end = Offset(0f, 1000f)
 )
@@ -57,7 +54,7 @@ val OnboardingBackgroundBrush = Brush.linearGradient(
 )
 
 val MainBackgroundBrush = Brush.linearGradient(
-    colors = listOf(Color(0xFF9BC6FB), Color(0xFFE6CEFF)),
+    colors = listOf(Color(0xFFE6CEFF), Color(0xFF9BC6FB)),
     start = Offset.Zero,
     end = Offset(0f, 1000f)
 )

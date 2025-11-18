@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.compose.rememberNavController
 import com.example.notecast.domain.repository.PreferencesRepository
 import com.example.notecast.presentation.navigation.RootNavGraph
+import com.example.notecast.presentation.theme.NoteCastTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -21,8 +22,9 @@ class MainActivity : AppCompatActivity() {
 
                 // Thiết lập NavController và gọi NavGraph ---
                 val navController = rememberNavController()
+            NoteCastTheme{
                 RootNavGraph(navController = navController, preferences = preferencesRepository)
-
+            }
         }
     }
 }
