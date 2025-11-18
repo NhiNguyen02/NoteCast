@@ -1,4 +1,4 @@
-package com.example.notecast.presentation.ui.common_components
+package com.example.notecast.presentation.ui.folderscreen
 
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.BorderStroke
@@ -24,10 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.notecast.domain.model.Folder
+import com.example.notecast.presentation.theme.PrimaryAccent
 
 // --- Hằng số giả lập ---
 val cardHeight: Dp = 80.dp
-val PrimaryAccent = Color(0xFF7B68EE) // Màu Tím chủ đạo (Accent Color)
 // ------------------------
 
 @OptIn(ExperimentalFoundationApi::class)

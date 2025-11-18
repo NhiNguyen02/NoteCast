@@ -1,6 +1,4 @@
-package com.example.notecast.presentation.ui.common_components
-
-// Có thể đặt trong com.example.notecast.presentation.components/SelectionBar.kt
+package com.example.notecast.presentation.ui.folderscreen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
