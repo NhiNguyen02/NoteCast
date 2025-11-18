@@ -64,6 +64,7 @@ fun NoteCard(
         ) {
             // HEADER: Icon & Title
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Icon and category tag
                 Icon(
                     painter = painterResource(iconRes),
                     contentDescription = null,
