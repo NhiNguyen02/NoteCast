@@ -130,15 +130,7 @@ fun MainAppScreen() {
                 }
 
                 composable(Screen.Recording.route) {
-                    RecordingScreen(
-                        onClose = { appNavController.navigateUp() },
-                        availableFolders = listOf("Công việc", "Cá nhân", "Ý tưởng"),
-                        onSaveFile = { folderName, recordedMs ->
-                            appNavController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Home.route) { inclusive = false }
-                            }
-                        }
-                    )
+                    RecordingScreen(navController = appNavController)
                 }
 
                 composable(

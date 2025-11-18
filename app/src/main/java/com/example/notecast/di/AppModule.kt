@@ -6,7 +6,8 @@ import dagger.hilt.components.SingletonComponent
 
 @Module(includes = [
     RepositoryModule::class, // <-- Bắt buộc
-    PreferencesModule::class // <-- Bắt buộc
+    PreferencesModule::class, // <-- Bắt buộc
+    AudioModule::class,       // <-- Bắt buộc
     // Thêm các Module khác (ví dụ: NetworkModule, DatabaseModule) vào đây
 ])
 @InstallIn(SingletonComponent::class)

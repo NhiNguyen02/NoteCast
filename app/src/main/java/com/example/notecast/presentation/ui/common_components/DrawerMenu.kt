@@ -45,7 +45,7 @@ fun AppDrawerContent(
 
     ModalDrawerSheet(
         modifier = Modifier
-            .fillMaxWidth(0.7f) // Chiếm 70% chiều rộng
+            .fillMaxWidth(0.5f) // Chiếm 50% chiều rộng
             .background(brush = MenuBackgroundBrush),
         drawerContainerColor = Color.Transparent
     ) {
