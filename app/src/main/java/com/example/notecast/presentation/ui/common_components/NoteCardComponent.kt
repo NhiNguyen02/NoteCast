@@ -1,9 +1,13 @@
 package com.example.notecast.presentation.ui.common_components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -13,87 +17,65 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.notecast.R
+import com.example.notecast.domain.model.Note
 
-// --- DỮ LIỆU TẠM THỜI (để preview) ---
-// TODO: Xóa các lớp này khi đã có model từ 'domain'
-enum class NoteType { IDEA, VOICE }
-enum class NoteCategory(val title: String, val color: Color) {
-    IDEA("Ý tưởng", Color(0xFFFFDD57)),
-    RESEARCH("Nghiên cứu", Color(0xFF9BC6FB))
-}
-data class Note(
-    val id: Int,
-    val title: String,
-    val content: String,
-    val type: NoteType,
-    val category: NoteCategory,
-    val isFavorite: Boolean,
-    val isPinned: Boolean // <-- Thêm trạng thái Pin
-)
-// Dữ liệu mẫu cho Preview
-val sampleNotes = listOf(
-    Note(1, "Ý tưởng sản phẩm mới", "Brainstorm về tính năng AI...", NoteType.IDEA, NoteCategory.IDEA, false, true), // Pinned
-    Note(2, "Nghiên cứu thị trường", "Phân tích đối thủ cạnh tranh...", NoteType.IDEA, NoteCategory.RESEARCH, true, false), // Favorited
-    Note(3, "Ghi âm cuộc họp", "Nội dung cuộc họp team...", NoteType.VOICE, NoteCategory.IDEA, false, false)
-)
-// --- KẾT THÚC DỮ LIỆU TẠM THỜI ---
 
 
 @Composable
 fun NoteCard(
     note: Note,
+    onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onPinClick: () -> Unit // <-- Thêm sự kiện Pin
+    onPinClick: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(15.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(0.5f)),
-
-
     ) {
         Column(
-            modifier = Modifier
-                .padding(12.dp),
+            modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.Center,
-
-                ) {
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icon and category tag
                 Icon(
                     painter = painterResource(
-                        when (note.type) {
-                            NoteType.IDEA -> R.drawable.file_text
-                            NoteType.VOICE -> R.drawable.outline_mic_24
+
+                        when (note.noteType) {
+                            "VOICE" -> R.drawable.outline_mic_24
+                            else -> R.drawable.file_text
                         }
                     ),
                     contentDescription = null,
                     tint = Color(0xFF855CF8),
                     modifier = Modifier.size(24.dp)
-
                 )
 
-
                 Spacer(modifier = Modifier.width(8.dp))
+
+                // Tiêu đề (Giữ nguyên)
                 Text(
                     text = note.title,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
+
+            // Nội dung
             Text(
-                text = note.content,
+                // Hiển thị content (text note) hoặc rawText (voice note)
+                text = note.content ?: (note.rawText ?: ""),
                 maxLines = 1,
                 minLines = 1,
                 overflow = TextOverflow.Ellipsis,
-
                 style = MaterialTheme.typography.bodyMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -102,39 +84,29 @@ fun NoteCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Tag badge
-                Box(
-                    modifier = Modifier
-                        // Thêm .clip để bo góc cho background
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(border = BorderStroke(2.dp, note.category.color), shape = RoundedCornerShape(16.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        note.category.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Black.copy(alpha = 0.8f)
-                    )
-                }
+
+
                 Spacer(modifier = Modifier.weight(1f))
 
                 // Hàng chứa các nút Pin và Favorite
-                Row{
-                    // Nút Pin (Ghim)
-                    IconButton(onClick = onPinClick,) {
+                Row {
+                    // Nút Pin
+                    IconButton(onClick = onPinClick) {
                         Icon(
-                            // TODO: Thêm icon pin_filled và pin_border vào res/drawable
-                            painter = painterResource( R.drawable.pin ),
+
+                            imageVector = if (note.pinTimestamp != null) Icons.Filled.PushPin
+                            else Icons.Outlined.PushPin,
                             contentDescription = "Pin",
-                            tint = if (note.isPinned) Color(0xFF6200EE) else Color.Gray, // Màu tím khi Pin
+                            tint = if (note.pinTimestamp != null) Color(0xFF6200EE) else Color.Gray,
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    // Nút Favorite (Yêu thích)
+                    // Nút Favorite
                     IconButton(onClick = onFavoriteClick) {
                         Icon(
-                            // TODO: Thêm icon heart_filled và heart_border vào res/drawable
-                            painter = painterResource(R.drawable.heart ),
+
+                            imageVector = if (note.isFavorite) Icons.Filled.Favorite
+                            else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Favorite",
                             tint = if (note.isFavorite) Color.Red else Color.Gray,
                             modifier = Modifier.size(20.dp)

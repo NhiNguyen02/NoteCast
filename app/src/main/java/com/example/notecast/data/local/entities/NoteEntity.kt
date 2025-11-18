@@ -5,26 +5,31 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.ForeignKey.Companion.SET_NULL
 
 @Entity(
     tableName = "note",
     foreignKeys = [ForeignKey(
-        entity = ProcessedTextEntity::class,
+        entity = FolderEntity::class,
         parentColumns = ["id"],
-        childColumns = ["processedTextId"],
-        onDelete = SET_NULL
+        childColumns = ["folderId"],
+        onDelete = ForeignKey.SET_NULL // Nếu xóa folder, note sẽ về "chưa phân loại"
     )],
-    indices = [Index(value = ["processedTextId"])]
+    indices = [Index(value = ["folderId"])]
 )
 data class NoteEntity(
     @PrimaryKey val id: String,
+
+    val noteType: String, // "TEXT" hoặc "VOICE"
     val title: String,
     val content: String? = null,
-    val processedTextId: String?,
     val tags: String,
     val mindMapJson: String? = null,
+
     val isFavorite: Boolean = false,
+
+    @ColumnInfo(defaultValue = "NULL")
+    val pinTimestamp: Long? = null,
+
     val folderId: String? = null,
     val colorHex: String? = null,
     val updatedAt: Long,

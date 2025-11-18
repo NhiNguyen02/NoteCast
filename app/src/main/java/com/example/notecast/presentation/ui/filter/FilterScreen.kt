@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -11,15 +12,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,11 +31,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.notecast.presentation.theme.*
+// 1. IMPORT LOGIC TỪ HOMESCREEN
+import com.example.notecast.presentation.ui.homescreen.FilterOptions
+import com.example.notecast.presentation.ui.homescreen.NoteTypeFilter
+import com.example.notecast.presentation.ui.homescreen.StatusFilter
 import androidx.compose.foundation.interaction.MutableInteractionSource as InteractionSourceAlias
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -55,7 +61,12 @@ private enum class FilterFooterButton { NONE, CLEAR, APPLY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterScreen(onClose: () -> Unit) {
+fun FilterScreen(
+    // 2. THAY ĐỔI THAM SỐ ĐỂ NHẬN DỮ LIỆU TỪ NGOÀI
+    currentOptions: FilterOptions,
+    onApply: (FilterOptions) -> Unit,
+    onClose: () -> Unit
+) {
     // coroutine scope for delayed close so Apply shows pressed color
     val scope = rememberCoroutineScope()
 
@@ -64,8 +75,17 @@ fun FilterScreen(onClose: () -> Unit) {
         Triple("Ghi âm giọng nói", "23 ghi chú", 23),
         Triple("Ghi chú văn bản", "45 ghi chú", 45)
     )
-    // single-selection: index of selected format, -1 = none
-    var selectedFormat by remember { mutableIntStateOf(0) }
+
+    // 3. KHỞI TẠO STATE DỰA TRÊN CURRENT OPTIONS
+    var selectedFormat by remember {
+        mutableIntStateOf(
+            when (currentOptions.noteType) {
+                NoteTypeFilter.ALL -> -1 // -1 nghĩa là không chọn cụ thể (All)
+                NoteTypeFilter.VOICE -> 0
+                NoteTypeFilter.TEXT -> 1
+            }
+        )
+    }
 
     val folders = remember {
         mutableStateListOf(
@@ -82,8 +102,17 @@ fun FilterScreen(onClose: () -> Unit) {
         StatusItem("Ghi chú đã ghim", "Hiển thị ghi chú quan trọng", 7, StatusType.PIN),
         StatusItem("Ghi chú yêu thích", "Ghi chú được đánh dấu yêu thích", 12, StatusType.HEART)
     )
-    // single-selection for status, -1 = none
-    var selectedStatus by remember { mutableIntStateOf(1) }
+
+    // 4. KHỞI TẠO STATE DỰA TRÊN CURRENT OPTIONS
+    var selectedStatus by remember {
+        mutableIntStateOf(
+            when (currentOptions.status) {
+                StatusFilter.NONE -> -1
+                StatusFilter.PINNED -> 0
+                StatusFilter.FAVORITE -> 1
+            }
+        )
+    }
 
     // Shared horizontal padding for inner content
     val horizontalPadding = 16.dp
@@ -131,7 +160,7 @@ fun FilterScreen(onClose: () -> Unit) {
         // Use the same background as HomeScreen by using backgroundPrimary from theme
         modifier = Modifier
             .fillMaxSize()
-            .background(brush = Background)
+            .background(brush = Background) // SỬA: Dùng Background từ theme của bạn
             // consume clicks so events don't fall through
             .clickable(
                 indication = null,
@@ -171,7 +200,7 @@ fun FilterScreen(onClose: () -> Unit) {
 
                     Text(
                         text = "Bộ lọc",
-                        style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, brush = TitleBrush)
+                        style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, brush = TitleBrush) // SỬA: Dùng TitleBrush
                     )
                 }
 
@@ -237,6 +266,7 @@ fun FilterScreen(onClose: () -> Unit) {
                             modifier = Modifier
                                 .size(28.dp)
                                 .clip(CircleShape)
+                                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f), CircleShape)
                                 .background(if (selected) PrimaryAccent else Color.Transparent),
                             contentAlignment = Alignment.Center
                         ) {
@@ -249,7 +279,6 @@ fun FilterScreen(onClose: () -> Unit) {
                                     modifier = Modifier
                                         .size(12.dp)
                                         .clip(CircleShape)
-                                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f), CircleShape)
                                 )
                             }
                         }
@@ -260,7 +289,7 @@ fun FilterScreen(onClose: () -> Unit) {
                             imageVector = if (index == 0) Icons.Default.Mic else Icons.Default.Description,
                             contentDescription = null,
                             tint = iconFixedTint,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(25.dp)
                         )
 
                         Spacer(modifier = Modifier.width(12.dp))
@@ -399,6 +428,23 @@ fun FilterScreen(onClose: () -> Unit) {
                             // set pressed visual then close after a short delay so user sees the purple state
                             scope.launch {
                                 pressedButton = FilterFooterButton.APPLY
+
+                                // 5. LOGIC MỚI: TẠO FilterOptions VÀ GỌI onApply
+                                val newOptions = FilterOptions(
+                                    noteType = when (selectedFormat) {
+                                        0 -> NoteTypeFilter.VOICE
+                                        1 -> NoteTypeFilter.TEXT
+                                        else -> NoteTypeFilter.ALL
+                                    },
+                                    status = when (selectedStatus) {
+                                        0 -> StatusFilter.PINNED
+                                        1 -> StatusFilter.FAVORITE
+                                        else -> StatusFilter.NONE
+                                    },
+                                    folderId = null // (Logic folder sẽ được thêm sau)
+                                )
+                                onApply(newOptions) // <-- GỬI DỮ LIỆU RA NGOÀI
+
                                 // small delay to let the color update be visible before closing
                                 delay(140)
                                 onClose()
@@ -469,7 +515,7 @@ private fun FolderRow(
             // checkbox square (consistent size)
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(30.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (selected) PrimaryAccent else Color(0xFFF0F0F4)),
                 contentAlignment = Alignment.Center
@@ -486,7 +532,7 @@ private fun FolderRow(
                     .clip(RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Folder, contentDescription = null, tint = folderTint.copy(alpha = 0.9f), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Folder, contentDescription = null, tint = folderTint.copy(alpha = 0.9f), modifier = Modifier.size(25.dp))
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -564,8 +610,8 @@ private fun StatusRow(
                 contentAlignment = Alignment.Center
             ) {
                 when (type) {
-                    StatusType.PIN -> Icon(Icons.Default.PushPin, contentDescription = null, tint = iconTint.copy(alpha = 0.9f), modifier = Modifier.size(18.dp))
-                    StatusType.HEART -> Icon(Icons.Default.Favorite, contentDescription = null, tint = iconTint.copy(alpha = 0.9f), modifier = Modifier.size(18.dp))
+                    StatusType.PIN -> Icon(Icons.Outlined.PushPin, contentDescription = null, tint = iconTint.copy(alpha = 0.9f), modifier = Modifier.size(25.dp))
+                    StatusType.HEART -> Icon(Icons.Outlined.Favorite, contentDescription = null, tint = iconTint.copy(alpha = 0.9f), modifier = Modifier.size(25.dp))
                 }
             }
 
@@ -587,5 +633,5 @@ private fun StatusRow(
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 private fun FilterScreenPreview() {
-    FilterScreen(onClose = {})
+    FilterScreen(currentOptions = FilterOptions(), onApply = {}, onClose = {})
 }

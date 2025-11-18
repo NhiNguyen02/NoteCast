@@ -1,11 +1,11 @@
 package com.example.notecast.di
 
-// SỬA: Import Implementation mới
-import com.example.notecast.data.repository.AudioRepositoryImpl
+import com.example.notecast.data.repository.FolderRepositoryImpl
 import com.example.notecast.data.repository.NoteRepositoryImpl
-// SỬA: Import Interface mới
-import com.example.notecast.domain.repository.AudioRepository
+import com.example.notecast.data.repository.PreferencesRepositoryImpl
+import com.example.notecast.domain.repository.FolderRepository
 import com.example.notecast.domain.repository.NoteRepository
+import com.example.notecast.domain.repository.PreferencesRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -19,15 +19,18 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindNoteRepository(
-        noteRepositoryImpl: NoteRepositoryImpl
-    ): NoteRepository
+        impl: NoteRepositoryImpl
+    ): NoteRepository // Ràng buộc Interface và Implementation
 
-    // SỬA: Thêm Binds cho AudioRepository
     @Binds
     @Singleton
-    abstract fun bindAudioRepository(
-        audioRepositoryImpl: AudioRepositoryImpl
-    ): AudioRepository
+    abstract fun bindFolderRepository(
+        impl: FolderRepositoryImpl
+    ): FolderRepository // Ràng buộc Interface và Implementation
 
-    // TODO: Thêm Binds cho FolderRepository...
+    @Binds
+    @Singleton
+    abstract fun bindPreferencesRepository(
+        impl: PreferencesRepositoryImpl
+    ): PreferencesRepository // Ràng buộc Interface và Implementation
 }
