@@ -55,7 +55,7 @@ class VADManager(
                 val silero = try {
                     SileroVADImpl(
                         context = context,
-                        modelPath = "models/silero_vad.onnx",
+                        modelPath = "silero_vad.onnx",
                         frameSize = 512,
                         minSpeechMs = 30,
                         frameDurationMs = 32

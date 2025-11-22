@@ -44,7 +44,7 @@ class SileroVADOnnx(
 
     init {
         // Copy model from assets to a file (onnxruntime needs file path)
-        val modelFile = copyModelToFile(context, "models/silero_vad.onnx")
+        val modelFile = copyModelToFile(context, "silero_vad.onnx")
         val opts = OrtSession.SessionOptions()
         // enable CPU execution provider (default)
         session = env.createSession(modelFile.absolutePath, opts)

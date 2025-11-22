@@ -68,9 +68,9 @@ dependencies {
     // DataStore Preferences
     implementation("androidx.datastore:datastore-preferences:1.1.7")
     // Hilt Navigation Compose
-    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
     // ONNX Runtime
-    implementation ("com.microsoft.onnxruntime:onnxruntime-android:1.17.1")
+    implementation ("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
     // Room
     val roomVersion = "2.8.3"
     implementation("androidx.room:room-runtime:$roomVersion")

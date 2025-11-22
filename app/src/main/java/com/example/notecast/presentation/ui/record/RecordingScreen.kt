@@ -5,9 +5,12 @@ package com.example.notecast.presentation.ui.record
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresPermission
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -18,18 +21,12 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddBox
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.GroupWork
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,18 +43,22 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.notecast.domain.vad.VadState
 import com.example.notecast.presentation.theme.*
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.viewmodel.AudioViewModel
 import com.example.notecast.utils.formatElapsed
 import androidx.navigation.NavController
+import com.example.notecast.presentation.viewmodel.ASRViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
+@RequiresPermission(value = "android.permission.RECORD_AUDIO")
+@Suppress("UNUSED_VALUE", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @Composable
 fun RecordingScreen(
-    viewModel: AudioViewModel = hiltViewModel(),
+    audioViewModel: AudioViewModel = hiltViewModel(),
+    asrViewModel: ASRViewModel = hiltViewModel(),
     navController: NavController? = null,
     onSaveFile: (folderName: String, recordedMs: Long) -> Unit = { _, _ -> },
     onBack: (() -> Unit)? = null,
@@ -65,16 +66,22 @@ fun RecordingScreen(
     val context = LocalContext.current
     val effectiveOnBack = onBack ?: { navController?.popBackStack() ?: (context as? Activity)?.finish() }
 
-    // Single source of truth: AudioRepository / ViewModel state
-    val recordingState by viewModel.recordingState.collectAsState()
-    val processing by viewModel.processing.collectAsState()
-    val processingPercent by viewModel.processingPercent.collectAsState()
-    val amplitude by viewModel.amplitude.collectAsState(initial = 0f)
-    val vadState by viewModel.vadState.collectAsState(initial = VadState.SILENT)
-    val waveform by viewModel.waveform.collectAsState(initial = emptyList())
-    val bufferAvailable by viewModel.bufferAvailableSamples.collectAsState(initial = 0)
-    val coroutineScope = rememberCoroutineScope()
+    // Audio state
+    val recordingState by audioViewModel.recordingState.collectAsState()
+    val processing by audioViewModel.processing.collectAsState()
+    val processingPercent by audioViewModel.processingPercent.collectAsState()
+    val amplitude by audioViewModel.amplitude.collectAsState(initial = 0f)
+    val vadState by audioViewModel.vadState.collectAsState(initial = VadState.SILENT)
+    val waveform by audioViewModel.waveform.collectAsState(initial = emptyList())
+    val bufferAvailable by audioViewModel.bufferAvailableSamples.collectAsState(initial = 0)
 
+    val coroutineScope = rememberCoroutineScope()
+    // ASR state
+    val transcriptState by asrViewModel.transcript.collectAsState(initial = null)
+    val transcriptText: String = transcriptState?.text ?: ""
+    val isTranscribing by asrViewModel.isTranscribing.collectAsState(initial = false)
+    val ASR_TAG = "RecordScreenASR"
+    // Local UI state
     var elapsedMs by remember { mutableLongStateOf(0L) }
     var showMenu by remember { mutableStateOf(false) }
     var pendingRecordedMs by remember { mutableStateOf<Long?>(null) }
@@ -92,13 +99,21 @@ fun RecordingScreen(
         // add other VadState cases if present in your enum
         else -> vadState.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
     }
+    // Handle system back button: if recording, show confirm; otherwise call effectiveOnBack
+    BackHandler {
+        if (recordingState == RecordingState.Recording) {
+            showExitConfirm = true
+        } else {
+            effectiveOnBack()
+        }
+    }
     // Timer: chạy dựa trên recordingState
     LaunchedEffect(recordingState) {
         if (recordingState == RecordingState.Recording) {
             while (true) {
                 delay(1000L)
                 elapsedMs += 1000L
-                if (viewModel.recordingState.value != RecordingState.Recording) break
+                if (audioViewModel.recordingState.value != RecordingState.Recording) break
             }
         } else if (recordingState == RecordingState.Idle) {
             elapsedMs = 0L
@@ -108,16 +123,23 @@ fun RecordingScreen(
     // Recording control handlers
     val startRecording: () -> Unit = {
         val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (hasPermission) viewModel.startRecording() else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        if (hasPermission) audioViewModel.startRecording() else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     val stopRecording: () -> Unit = {
-        viewModel.stopRecording()
+        // Stop audio capture and trigger processing asynchronously
         coroutineScope.launch {
-            viewModel.processAndSave(prePadding = 1, postPadding = 1) { result ->
+            audioViewModel.stopRecording()
+            audioViewModel.processAndSave(prePadding = 1, postPadding = 1) { result ->
                 if (result.file != null) {
                     Toast.makeText(context, "Đã lưu: ${result.file.absolutePath}", Toast.LENGTH_SHORT).show()
                     pendingRecordedMs = result.recordedMs
+                    // Auto-transcribe using ASRViewModel
+                    if (!asrViewModel.isTranscribing.value) {
+                        Log.d(ASR_TAG, "Auto-starting transcription for saved file=${result.file.absolutePath}")
+                        Toast.makeText(context, "ASR: Bắt đầu chuyển đổi giọng nói → văn bản", Toast.LENGTH_SHORT).show()
+                        asrViewModel.startTranscriptionTrimmed(prePadding = 1, postPadding = 1)
+                    }
                 } else {
                     Toast.makeText(context, result.message ?: "Không có giọng nói", Toast.LENGTH_SHORT).show()
                 }
@@ -127,8 +149,8 @@ fun RecordingScreen(
 
     val togglePauseResume: () -> Unit = {
         when (recordingState) {
-            RecordingState.Recording -> viewModel.pauseRecording()
-            RecordingState.Paused -> viewModel.resumeRecording()
+            RecordingState.Recording -> audioViewModel.pauseRecording()
+            RecordingState.Paused -> audioViewModel.resumeRecording()
             else -> {}
         }
     }
@@ -248,7 +270,54 @@ fun RecordingScreen(
                 )
             }
 
-//            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(18.dp))
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "ASR Transcript:",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontSize = 14.sp
+                )
+                val scrollState = rememberScrollState()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF222222))
+                        .padding(8.dp)
+                ) {
+                    // Hiển thị loading TẠI TRUNG TÂM
+                    if (isTranscribing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = PrimaryAccent
+                        )
+                    }
+                    // Hiển thị transcript TÁCH RIÊNG
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                    ) {
+                        val displayText = when {
+                            isTranscribing -> ""
+                            transcriptText.isNotBlank() -> transcriptText
+                            else -> "Không có nội dung."
+                        }
+                        Text(
+                            text = displayText,
+                            color = Color.White
+                        )
+                    }
+                }
+                // Auto scroll chỉ trigger khi transcript có giá trị thực
+                LaunchedEffect(transcriptText) {
+                    if (transcriptText.isNotBlank()) {
+                        scrollState.animateScrollTo(scrollState.maxValue)
+                    }
+                }
+            }
             Spacer(modifier = Modifier.weight(1f))
 
             // Bottom controls
@@ -387,19 +456,7 @@ fun RecordingScreen(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
                 )
             }
-
-
             Spacer(modifier = Modifier.height(24.dp))
-
-//            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-//                Text(
-//                    text = "Nhấn nút ghi âm để bắt đầu thu âm",
-//                    fontSize = 12.sp,
-//                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
-//                )
-//            }
-//
-//            )
         }
     }
     // Processing dialog
@@ -408,12 +465,13 @@ fun RecordingScreen(
     // Place this AlertDialog somewhere inside the same composable (e.g., inside the outer Box/Column)
     if (showExitConfirm) {
         ExitConfirm(visible = true, onConfirm = {
-            viewModel.stopRecording()
+            audioViewModel.stopRecording()
             effectiveOnBack()
         }, onDismiss = { showExitConfirm = false })
     }
 }
 
+@RequiresPermission(Manifest.permission.RECORD_AUDIO)
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 private fun RecordingScreenPreview() {
