@@ -21,5 +21,6 @@ data class NoteListState(
     // 3. Danh sách đã xử lý (để cho UI hiển thị)
     val filteredAndSortedNotes: List<Note> = emptyList(),
 
-    val error: String? = null
+    val error: String? = null,
+    val filterCounts: FilterCounts = FilterCounts(),
 )

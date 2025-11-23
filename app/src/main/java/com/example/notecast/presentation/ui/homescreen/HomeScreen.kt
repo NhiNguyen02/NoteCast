@@ -11,12 +11,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,20 +25,21 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.R
-import com.example.notecast.domain.model.Note
 import com.example.notecast.presentation.ui.common_components.NoteCard
-
+import android.graphics.Color as AndroidColor
 import com.example.notecast.presentation.ui.filter.FilterScreen
 import com.example.notecast.presentation.ui.sort.SortScreen
 
 import com.example.notecast.presentation.theme.LogoBrush
 import com.example.notecast.presentation.theme.MainButtonBrush
+import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.TabButton2Brush
+import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
+import com.example.notecast.presentation.ui.dialog.SelectFolderDialog
 import com.example.notecast.presentation.viewmodel.NoteListViewModel
 import kotlinx.coroutines.launch
 
@@ -54,28 +53,83 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // HomeScreen tự quản lý việc hiển thị Dialog của nó
     var showFilterDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
+    // --- STATE QUẢN LÝ CHỌN (SELECTION) ---
+    var isSelectionMode by remember { mutableStateOf(false) }
+    val selectedNoteIds = remember { mutableStateListOf<String>() }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // 1. NỘI DUNG CHÍNH
+        // NỘI DUNG CHÍNH
         HomeScreenContent(
             drawerState = drawerState,
             state = state,
+            isSelectionMode = isSelectionMode,
+            selectedNoteIds = selectedNoteIds,
             onEvent = viewModel::onEvent,
-            // Khi nhấn nút ở UI, chỉ cần bật cờ local tại đây
             onFilterClick = { showFilterDialog = true },
             onSortClick = { showSortDialog = true },
             onOpenCreateDialog = onOpenCreateDialog,
-            onNoteClick = onNoteClick
+
+            // Xử lý click vào note
+            onNoteClick = { noteId ->
+                if (isSelectionMode) {
+                    // Nếu đang chọn -> Toggle
+                    if (selectedNoteIds.contains(noteId)) selectedNoteIds.remove(noteId)
+                    else selectedNoteIds.add(noteId)
+
+                    // Nếu bỏ chọn hết -> Tắt chế độ chọn
+                    if (selectedNoteIds.isEmpty()) isSelectionMode = false
+                } else {
+                    // Nếu bình thường -> Mở chi tiết
+                    onNoteClick(noteId)
+                }
+            },
+
+            // Xử lý nhấn giữ (Long click) -> Bật chế độ chọn
+            onNoteLongClick = { noteId ->
+                if (!isSelectionMode) {
+                    isSelectionMode = true
+                    selectedNoteIds.add(noteId)
+                }
+            },
+            // Xử lý chọn tất cả
+            onSelectAllClick = {
+                if (selectedNoteIds.size == state.filteredAndSortedNotes.size) {
+                    selectedNoteIds.clear() // Bỏ chọn tất cả
+                } else {
+                    selectedNoteIds.clear()
+                    selectedNoteIds.addAll(state.filteredAndSortedNotes.map { it.id }) // Chọn tất cả
+                }
+            },
+
+            // Xử lý xóa nhiều
+            onDeleteSelected = {
+                viewModel.deleteMultipleNotes(selectedNoteIds.toList())
+                isSelectionMode = false
+                selectedNoteIds.clear()
+            },
+
+            // Xử lý di chuyển nhiều
+            onMoveSelected = {
+                showMoveDialog = true
+            },
+            // Xử lý tắt chế độ chọn (nút Back hoặc X)
+            onCloseSelectionMode = {
+                isSelectionMode = false
+                selectedNoteIds.clear()
+            }
         )
 
-        // 2. LỚP PHỦ FILTER (Hiển thị khi cờ bật)
+
         if (showFilterDialog) {
             FilterScreen(
                 currentOptions = state.filterOptions,
+                availableFolders = state.allFolders,
+                counts = state.filterCounts, // <-- TRUYỀN COUNTS VÀO
                 onApply = { newOptions ->
                     viewModel.onEvent(NoteListEvent.OnApplyFilters(newOptions))
                 },
@@ -83,7 +137,7 @@ fun HomeScreen(
             )
         }
 
-        // 3. LỚP PHỦ SORT (Hiển thị khi cờ bật)
+
         if (showSortDialog) {
             SortScreen(
                 currentOptions = state.sortOptions,
@@ -93,6 +147,19 @@ fun HomeScreen(
                 onClose = { showSortDialog = false }
             )
         }
+        if (showMoveDialog) {
+            SelectFolderDialog(
+                folders = state.allFolders,
+                onDismiss = { showMoveDialog = false },
+                onFolderSelected = { targetFolder ->
+                    // Gọi ViewModel di chuyển
+                    viewModel.moveNotesToFolder(selectedNoteIds.toList(), targetFolder?.id)
+                    showMoveDialog = false
+                    isSelectionMode = false
+                    selectedNoteIds.clear()
+                }
+            )
+        }
     }
 }
 
@@ -100,11 +167,19 @@ fun HomeScreen(
 private fun HomeScreenContent(
     drawerState: DrawerState,
     state: NoteListState,
+    isSelectionMode: Boolean,
+    selectedNoteIds: List<String>,
+
     onEvent: (NoteListEvent) -> Unit,
     onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
     onOpenCreateDialog: () -> Unit,
-    onNoteClick: (String) -> Unit
+    onNoteClick: (String) -> Unit,
+    onNoteLongClick: (String) -> Unit,
+    onSelectAllClick: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    onMoveSelected: () -> Unit,
+    onCloseSelectionMode: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
@@ -112,16 +187,29 @@ private fun HomeScreenContent(
         containerColor = Color.Transparent,
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .shadow(elevation = 6.dp, shape = CircleShape)
-                    .clip(CircleShape)
-                    .background(brush = MainButtonBrush)
-                    .clickable { onOpenCreateDialog() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
+            if (!isSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .shadow(elevation = 6.dp, shape = CircleShape)
+                        .clip(CircleShape)
+                        .background(brush = MainButtonBrush)
+                        .clickable { onOpenCreateDialog() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
+                }
+            }
+        },
+        bottomBar = {
+            // Hiển thị thanh thao tác khi ở chế độ chọn
+            if (isSelectionMode) {
+                NoteSelectionBar(
+                    selectedCount = selectedNoteIds.size,
+                    onSelectAllClick = onSelectAllClick,
+                    onMoveClick = onMoveSelected,
+                    onDeleteClick = onDeleteSelected
+                )
             }
         }
     ) { paddingValues ->
@@ -139,24 +227,30 @@ private fun HomeScreenContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.outline_menu_24),
+                    painter = painterResource(id = if (isSelectionMode) R.drawable.baseline_close_24 else R.drawable.outline_menu_24),
                     contentDescription = "menu",
                     tint = Color(0xff6200AE),
                     modifier = Modifier.clickable {
-                        scope.launch { drawerState.open() }
+                        if (isSelectionMode) onCloseSelectionMode()
+                        else scope.launch { drawerState.open() }
                     }
                 )
+
                 Text(
-                    text = "NOTECAST",
+                    text = if (isSelectionMode) "Đã chọn ${selectedNoteIds.size}" else "NOTECAST",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     style = TextStyle(brush = LogoBrush)
                 )
-                Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "App Logo",
-                    modifier = Modifier.size(36.dp)
-                )
+                if (!isSelectionMode) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "App Logo",
+                        modifier = Modifier.size(36.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.size(36.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -255,18 +349,18 @@ private fun HomeScreenContent(
                     CircularProgressIndicator()
                 }
             } else if (state.allNotes.isEmpty()) {
-                // Trường hợp 1: Chưa có ghi chú nào (Empty Data)
+                // Chưa có ghi chú nào (Empty Data)
                 Column(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Image(painter = painterResource(id = R.drawable.bg_empty), contentDescription = "No notes", modifier = Modifier.size(220.dp))
+                    Image(painter = painterResource(id = R.drawable.bg_empty), contentDescription = "No notes", modifier = Modifier.size(180.dp))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Không có ghi chú nào ở đây", color = Color(0xff724C7F).copy(alpha = 0.45f))
                 }
             } else if (state.filteredAndSortedNotes.isEmpty()) {
-                // Trường hợp 2: Có ghi chú nhưng Lọc không ra (No Match)
+                //Có ghi chú nhưng Lọc không ra (No Match)
                 Column(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -284,9 +378,23 @@ private fun HomeScreenContent(
             } else {
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.filteredAndSortedNotes, key = { it.id }) { note ->
+                        val folder = state.allFolders.find { it.id == note.folderId }
+                        val folderName = folder?.name ?: "Chưa phân loại"
+                        val folderColor = try {
+                            if (folder?.colorHex != null) Color(AndroidColor.parseColor(folder.colorHex))
+                            else Color(0xFFCCA8FF) // Màu tím nhạt cho "Chưa phân loại"
+                        } catch (e: Exception) {
+                            PrimaryAccent
+                        }
+                        val isSelected = selectedNoteIds.contains(note.id)
                         NoteCard(
                             note = note,
+                            folderName = folderName,
+                            folderColor = folderColor,
+                            isSelectionMode = isSelectionMode,
+                            isSelected = isSelected,
                             onClick = { onNoteClick(note.id) },
+                            onLongClick = { onNoteLongClick(note.id) },
                             onFavoriteClick = { onEvent(NoteListEvent.OnToggleFavorite(note)) },
                             onPinClick = { onEvent(NoteListEvent.OnTogglePin(note)) }
                         )

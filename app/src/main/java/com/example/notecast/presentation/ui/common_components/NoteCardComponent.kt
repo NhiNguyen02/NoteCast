@@ -1,13 +1,16 @@
 package com.example.notecast.presentation.ui.common_components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -17,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -24,36 +29,43 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.notecast.R
 import com.example.notecast.domain.model.Note
-
-
+import com.example.notecast.presentation.theme.PrimaryAccent
 
 @Composable
 fun NoteCard(
     note: Note,
+    folderName: String,
+    folderColor: Color,
+
     onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onPinClick: () -> Unit
+    onPinClick: () -> Unit,
+
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onLongClick: () -> Unit = {},
 ) {
+    val iconRes = if (note.noteType == "VOICE") R.drawable.outline_mic_24 else R.drawable.file_text
+    val cardBorder = if (isSelected) BorderStroke(2.dp, PrimaryAccent) else null
     Card(
         shape = RoundedCornerShape(15.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(0.5f)),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.Center,
         ) {
+            // HEADER: Icon & Title
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(
-
-                        when (note.noteType) {
-                            "VOICE" -> R.drawable.outline_mic_24
-                            else -> R.drawable.file_text
-                        }
-                    ),
+                    painter = painterResource(iconRes),
                     contentDescription = null,
                     tint = Color(0xFF855CF8),
                     modifier = Modifier.size(24.dp)
@@ -61,59 +73,112 @@ fun NoteCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Tiêu đề (Giữ nguyên)
                 Text(
-                    text = note.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    text = note.title.ifBlank { "Chưa có tiêu đề" },
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
 
-            // Nội dung
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // CONTENT
             Text(
-                // Hiển thị content (text note) hoặc rawText (voice note)
-                text = note.content ?: (note.rawText ?: ""),
+                text = note.content ?: (note.rawText ?: "Không có nội dung"),
                 maxLines = 1,
                 minLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium
+                modifier = Modifier
+                    .fillMaxWidth(0.7f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
             )
-            Spacer(modifier = Modifier.height(8.dp))
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // FOOTER
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Hàng chứa các nút Pin và Favorite
-                Row {
-                    // Nút Pin
-                    IconButton(onClick = onPinClick) {
-                        Icon(
-
-                            imageVector = if (note.pinTimestamp != null) Icons.Filled.PushPin
-                            else Icons.Outlined.PushPin,
-                            contentDescription = "Pin",
-                            tint = if (note.pinTimestamp != null) Color(0xFF6200EE) else Color.Gray,
-                            modifier = Modifier.size(20.dp)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White) // Nền trắng
+                        .border(
+                            border = BorderStroke(1.dp, folderColor.copy(alpha = 0.6f)), // Viền màu
+                            shape = RoundedCornerShape(12.dp)
                         )
-                    }
-                    // Nút Favorite
-                    IconButton(onClick = onFavoriteClick) {
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Icon Folder nhỏ
                         Icon(
-
-                            imageVector = if (note.isFavorite) Icons.Filled.Favorite
-                            else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (note.isFavorite) Color.Red else Color.Gray,
-                            modifier = Modifier.size(20.dp)
+                            imageVector = Icons.Outlined.Folder,
+                            contentDescription = null,
+                            tint = folderColor,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        // Tên Folder
+                        Text(
+                            text = folderName,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = folderColor // Chữ cùng màu với viền/icon
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.weight(1f))
+                if (!isSelectionMode) {
+                    // Actions
+                    Row {
+                        IconButton(
+                            onClick = onPinClick,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.pin),
+                                contentDescription = "Pin",
+                                tint = if (note.pinTimestamp != null) Color(0xFF6200EE) else Color.LightGray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        IconButton(
+                            onClick = onFavoriteClick,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.heart),
+                                contentDescription = "Favorite",
+                                tint = if (note.isFavorite) Color.Red else Color.LightGray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+                // OVERLAY CHECKBOX KHI ĐƯỢC CHỌN
+                if (isSelectionMode && isSelected) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = "Selected",
+                        tint = PrimaryAccent,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(24.dp)
+                            .background(Color.White, CircleShape) // Nền trắng cho icon check
+                    )
+                }
             }
+
         }
     }
 }

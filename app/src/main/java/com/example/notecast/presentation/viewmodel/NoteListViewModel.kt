@@ -6,6 +6,7 @@ import com.example.notecast.domain.model.Note
 import com.example.notecast.domain.usecase.DeleteNoteUseCase
 import com.example.notecast.domain.usecase.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.GetAllNotesUseCase
+import com.example.notecast.domain.usecase.GetNotesByFolderUseCase
 import com.example.notecast.domain.usecase.SaveNoteUseCase
 import com.example.notecast.presentation.ui.homescreen.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +19,8 @@ class NoteListViewModel @Inject constructor(
     getAllNotesUseCase: GetAllNotesUseCase,
     getAllFoldersUseCase: GetAllFoldersUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
-    private val deleteNoteUseCase: DeleteNoteUseCase
+    private val deleteNoteUseCase: DeleteNoteUseCase,
+    private val getNotesByFolderUseCase: GetNotesByFolderUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NoteListState())
@@ -29,15 +31,22 @@ class NoteListViewModel @Inject constructor(
         val notesFlow = getAllNotesUseCase()
         val foldersFlow = getAllFoldersUseCase()
 
-        // "Cỗ máy" xử lý:
-        // Bất cứ khi nào 1 trong 3 (notes, folders, state) thay đổi,
-        // nó sẽ tự động chạy lại để tính toán danh sách cuối cùng
+
         combine(notesFlow, foldersFlow, _state) { notes, folders, state ->
 
-            // 1. Cập nhật danh sách gốc
+            val counts = FilterCounts(
+                voiceCount = notes.count { it.noteType == "VOICE" },
+                textCount = notes.count { it.noteType == "TEXT" },
+                pinnedCount = notes.count { it.pinTimestamp != null },
+                favoriteCount = notes.count { it.isFavorite },
+                allFoldersCount = notes.size,
+                folderCounts = notes.groupBy { it.folderId ?: "null" }
+                    .mapValues { it.value.size }
+            )
+            // Cập nhật danh sách gốc
             var processingList = notes
 
-            // 2. Lọc (Filter)
+            // Lọc (Filter)
             processingList = processingList.filter { note ->
                 // Lọc theo Tìm kiếm
                 val searchMatch = if (state.searchQuery.isNotBlank()) {
@@ -59,12 +68,17 @@ class NoteListViewModel @Inject constructor(
                     StatusFilter.FAVORITE -> note.isFavorite
                 }
 
-                // (Bạn có thể thêm lọc theo FolderId ở đây)
+                val folderMatch = if (state.filterOptions.folderId == null) {
+                    true
+                } else {
+                    // Chỉ lấy note thuộc folder đang chọn
+                    note.folderId == state.filterOptions.folderId
+                }
 
-                searchMatch && typeMatch && statusMatch
+                searchMatch && typeMatch && statusMatch && folderMatch
             }
 
-            // 3. Sắp xếp (Sort)
+            // Sắp xếp (Sort)
             processingList = when (state.sortOptions.sortBy) {
                 SortBy.DATE_UPDATED -> {
                     if (state.sortOptions.direction == SortDirection.DESCENDING)
@@ -73,7 +87,12 @@ class NoteListViewModel @Inject constructor(
                         processingList.sortedBy { it.updatedAt }
                 }
 
-                SortBy.DATE_CREATED -> { /* ... */ } // (Tương tự)
+                SortBy.DATE_CREATED -> {
+                    if (state.sortOptions.direction == SortDirection.DESCENDING)
+                        processingList.sortedByDescending { it.id } // ID thường tăng dần theo thời gian nếu là UUID v7 hoặc auto-inc, hoặc dùng updatedAt tạm
+                    else
+                        processingList.sortedBy { it.id }
+                } // (Tương tự)
                 SortBy.TITLE -> {
                     if (state.sortOptions.direction == SortDirection.DESCENDING)
                         processingList.sortedByDescending { it.title }
@@ -82,10 +101,11 @@ class NoteListViewModel @Inject constructor(
                 }
             } as List<Note>
 
-            // 4. Trả về State cuối cùng
+            //  Trả về State cuối cùng
             state.copy(
                 isLoading = false,
                 allNotes = notes,
+                filterCounts = counts,
                 allFolders = folders,
                 filteredAndSortedNotes = processingList // Đây là danh sách UI sẽ thấy
             )
@@ -117,7 +137,11 @@ class NoteListViewModel @Inject constructor(
             }
             is NoteListEvent.OnToggleFavorite -> {
                 viewModelScope.launch {
-                    saveNoteUseCase(event.note.copy(isFavorite = !event.note.isFavorite))
+                    val note = _state.value.allNotes.find { it.id == event.note.id }
+                    if (note != null) {
+                        saveNoteUseCase(note.copy(isFavorite = !note.isFavorite))
+                    }
+//                    saveNoteUseCase(event.note.copy(isFavorite = !event.note.isFavorite))
                 }
             }
             is NoteListEvent.OnTogglePin -> {
@@ -128,6 +152,25 @@ class NoteListViewModel @Inject constructor(
                     )
                     saveNoteUseCase(note)
                 }
+            }
+        }
+    }
+    fun deleteMultipleNotes(noteIds: List<String>) {
+        viewModelScope.launch {
+            noteIds.forEach { id ->
+                deleteNoteUseCase(id)
+            }
+        }
+    }
+    fun moveNotesToFolder(noteIds: List<String>, targetFolderId: String?) {
+        viewModelScope.launch {
+            // Lọc lấy các note cần di chuyển từ list hiện tại
+            val notesToMove = _state.value.allNotes.filter { it.id in noteIds }
+
+            notesToMove.forEach { note ->
+                // Cập nhật folderId mới
+                val updatedNote = note.copy(folderId = targetFolderId, updatedAt = System.currentTimeMillis())
+                saveNoteUseCase(updatedNote)
             }
         }
     }

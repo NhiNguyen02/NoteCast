@@ -1,5 +1,7 @@
+
 package com.example.notecast.presentation.ui.folderscreen
 
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.*
@@ -19,343 +20,357 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.domain.model.Folder
+import com.example.notecast.domain.model.Note
 import com.example.notecast.presentation.ui.dialog.CreateFolderDialog
+import com.example.notecast.presentation.ui.dialog.FolderColors
+import com.example.notecast.presentation.ui.dialog.SelectFolderDialog // <-- IMPORT DIALOG CHỌN
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.theme.TitleBrush
-import java.util.UUID
+import com.example.notecast.presentation.theme.PrimaryAccent
+import com.example.notecast.presentation.viewmodel.FolderViewModel
+import com.example.notecast.presentation.ui.common_components.NoteCard
+// Import NoteSelectionBar (nếu bạn để ở homescreen package)
+import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
 
-
-data class UiFolder(
-    val folder: Folder,
-    val isSelected: Boolean = false
-)
-
-data class Note(
-    val id: String,
-    val folderId: String,
-    val title: String,
-    val contentPreview: String,
-    val createdAt: Long = System.currentTimeMillis()
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderScreen(
-    onBackClick: () -> Unit = {},
-    onNewFolderClick: () -> Unit = {},
-    onFolderOpened: (Folder) -> Unit = {},
-    onFolderSelected: ((Folder) -> Unit)? = null // when non-null, screen acts as "picker"
+    onBackClick: () -> Unit,
+    onFolderSelected: ((Folder) -> Unit)? = null,
+    onNoteClick: (String) -> Unit = {},
+    viewModel: FolderViewModel = hiltViewModel()
 ) {
+    val state by viewModel.state.collectAsState()
+
+    // --- State UI ---
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var folderToEdit by remember { mutableStateOf<Folder?>(null) }
 
-    val initialDomains = remember {
-        listOf(
-            Folder(
-                id = "1",
-                name = "Công việc",
-                colorHex = "#9370DB",
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            ),
-            Folder(
-                id = "2",
-                name = "Ý tưởng",
-                colorHex = "#DC143C",
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            ),
-            Folder(
-                id = "3",
-                name = "Tài liệu",
-                colorHex = "#3CB371",
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            ),
-            Folder(
-                id = "4",
-                name = "Lịch học",
-                colorHex = "#FF8C00",
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            ),
-            Folder(
-                id = "5",
-                name = "Họp nhóm",
-                colorHex = "#4682B4",
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            )
-        )
-    }
+    // State chọn Folder
+    var isFolderSelectionMode by remember { mutableStateOf(false) }
+    val selectedFolderIds = remember { mutableStateListOf<String>() }
 
-    var uiFolders by remember { mutableStateOf(initialDomains.map { UiFolder(it) }) }
-    var isSelectionMode by remember { mutableStateOf(false) }
+    // State chọn Note (khi mở folder)
+    var isNoteSelectionMode by remember { mutableStateOf(false) }
+    val selectedNoteIds = remember { mutableStateListOf<String>() }
+    var showMoveNoteDialog by remember { mutableStateOf(false) } // Dialog di chuyển note
 
     var openedFolder by remember { mutableStateOf<Folder?>(null) }
 
-    val allNotes = remember {
-        listOf(
-            Note(id = "n1", folderId = "1", title = "Meeting kết quả", contentPreview = "Ghi chú cuộc họp..."),
-            Note(id = "n2", folderId = "1", title = "Task tuần", contentPreview = "Các task cần làm..."),
-            Note(id = "n3", folderId = "2", title = "Ý tưởng app X", contentPreview = "Mô tả ý tưởng..."),
-            Note(id = "n4", folderId = "3", title = "Tài liệu A", contentPreview = "Tổng hợp tài liệu..."),
-            Note(id = "n5", folderId = "4", title = "Lịch học HK1", contentPreview = "Lịch và môn học...")
-        )
+    // Tải note khi mở folder
+    LaunchedEffect(openedFolder) {
+        if (openedFolder != null) {
+            viewModel.loadNotesByFolder(openedFolder!!.id)
+        } else {
+            // Khi quay lại list folder, tắt chế độ chọn note
+            isNoteSelectionMode = false
+            selectedNoteIds.clear()
+        }
     }
 
-    val selectedFolders = uiFolders.filter { it.isSelected }
+    // Helper Hex -> Color
+    fun hexToColor(hex: String?): Color {
+        return try {
+            if (hex.isNullOrBlank()) FolderColors.first()
+            else Color(AndroidColor.parseColor(hex))
+        } catch (e: Exception) { FolderColors.first() }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
             if (openedFolder == null) {
+                // --- TOP BAR DANH SÁCH FOLDER ---
                 FolderTopAppBar(
-                    isSelectionMode = isSelectionMode,
+                    isSelectionMode = isFolderSelectionMode,
+                    selectedCount = selectedFolderIds.size,
                     onBackClick = onBackClick,
                     onCloseSelectionMode = {
-                        isSelectionMode = false
-                        uiFolders = uiFolders.map { it.copy(isSelected = false) }
+                        isFolderSelectionMode = false
+                        selectedFolderIds.clear()
                     }
                 )
             } else {
+                // --- TOP BAR DANH SÁCH NOTE (BÊN TRONG FOLDER) ---
                 NotesTopAppBar(
                     folder = openedFolder!!,
-                    onBack = { openedFolder = null }
+                    isSelectionMode = isNoteSelectionMode,
+                    selectedCount = selectedNoteIds.size,
+                    onBack = {
+                        if (isNoteSelectionMode) {
+                            isNoteSelectionMode = false
+                            selectedNoteIds.clear()
+                        } else {
+                            openedFolder = null
+                        }
+                    }
                 )
             }
         },
         bottomBar = {
-            if (isSelectionMode && openedFolder == null) {
+            // --- BOTTOM BAR KHI CHỌN FOLDER ---
+            if (isFolderSelectionMode && openedFolder == null) {
                 SelectionBar(
-                    selectedCount = selectedFolders.size,
+                    selectedCount = selectedFolderIds.size,
                     onSelectAllClick = {
-                        val allSelected = selectedFolders.size == uiFolders.size
-                        uiFolders = uiFolders.map { it.copy(isSelected = !allSelected) }
+                        if (selectedFolderIds.size == state.folders.size) selectedFolderIds.clear()
+                        else { selectedFolderIds.clear(); selectedFolderIds.addAll(state.folders.map { it.id }) }
                     },
-                    onEditClick = { /* Handle Edit */ },
-                    onDeleteClick = { /* Handle Delete */ }
+                    onEditClick = {
+                        val folderId = selectedFolderIds.firstOrNull()
+                        if (folderId != null) {
+                            folderToEdit = state.folders.find { it.id == folderId }
+                            if (folderToEdit != null) showEditDialog = true
+                        }
+                    },
+                    onDeleteClick = {
+                        selectedFolderIds.forEach { id -> viewModel.deleteFolder(id) }
+                        isFolderSelectionMode = false; selectedFolderIds.clear()
+                    }
                 )
             }
-        },
-    ) { paddingValues ->
-        Column(
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color(0xffE5E7EB))
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.Transparent),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (openedFolder == null && !isSelectionMode) {
-                    CreateFolderButton(onNewFolderClick = { showCreateDialog = true })
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color(0xffE5E7EB))
-            )
 
+            // --- BOTTOM BAR KHI CHỌN NOTE ---
+            if (isNoteSelectionMode && openedFolder != null) {
+                NoteSelectionBar(
+                    selectedCount = selectedNoteIds.size,
+                    onSelectAllClick = {
+                        if (selectedNoteIds.size == state.folderNotes.size) selectedNoteIds.clear()
+                        else { selectedNoteIds.clear(); selectedNoteIds.addAll(state.folderNotes.map { it.id }) }
+                    },
+                    onMoveClick = { showMoveNoteDialog = true }, // Mở Dialog chọn folder đích
+                    onDeleteClick = {
+                        viewModel.deleteMultipleNotes(selectedNoteIds.toList())
+                        isNoteSelectionMode = false
+                        selectedNoteIds.clear()
+                    }
+                )
+            }
+        }
+    ) { paddingValues ->
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Spacer(Modifier.height(8.dp))
+            // DANH SÁCH GHI CHÚ (BÊN TRONG FOLDER)
             if (openedFolder != null && onFolderSelected == null) {
-                val folderNotes = allNotes.filter { it.folderId == openedFolder!!.id }
-                NotesScreen(folder = openedFolder!!, notes = folderNotes, onNoteClick = { /* handle open note */ })
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 12.dp),
-                    contentPadding = PaddingValues(bottom = if (!isSelectionMode) 80.dp else 0.dp)
-                ) {
-                    items(uiFolders, key = { it.folder.id }) { uiFolder ->
-                        FolderCard(
-                            folder = uiFolder.folder,
-                            isSelectionMode = isSelectionMode,
-                            isSelected = uiFolder.isSelected,
-                            onFolderClick = { folderClicked ->
-                                // If the screen is used as a picker, selecting a folder should return it
-                                if (onFolderSelected != null) {
-                                    onFolderSelected(folderClicked)
-                                    // Optionally navigate back - caller decides; calling onBackClick helps common navigation patterns
-                                    onBackClick()
-                                } else if (!isSelectionMode) {
-                                    openedFolder = folderClicked
-                                    onFolderOpened(folderClicked)
-                                } else {
-                                    uiFolders = uiFolders.map {
-                                        if (it.folder.id == folderClicked.id) it.copy(isSelected = !it.isSelected) else it
+                // Parse màu của folder hiện tại
+                val currentFolderColor = hexToColor(openedFolder!!.colorHex)
+
+                if (state.folderNotes.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Không có ghi chú trong thư mục này", color = Color.Gray)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding( horizontal = 16.dp)
+                        ,
+                        contentPadding = PaddingValues(bottom = if (isNoteSelectionMode) 80.dp else 0.dp)
+                    ) {
+                        items(state.folderNotes, key = { it.id }) { note ->
+                            val isSelected = selectedNoteIds.contains(note.id)
+
+                            NoteCard(
+                                note = note,
+                                folderName = openedFolder!!.name,
+                                folderColor = currentFolderColor,
+                                // Logic chọn Note
+                                isSelectionMode = isNoteSelectionMode,
+                                isSelected = isSelected,
+                                onLongClick = {
+                                    if (!isNoteSelectionMode) {
+                                        isNoteSelectionMode = true
+                                        selectedNoteIds.add(note.id)
                                     }
-                                    if (uiFolders.none { it.isSelected }) isSelectionMode = false
-                                }
-                            },
-                            onFolderLongClick = { folderLongClicked ->
-                                isSelectionMode = true
-                                uiFolders = uiFolders.map {
-                                    if (it.folder.id == folderLongClicked.id) it.copy(isSelected = true) else it
-                                }
-                            },
-                            onToggleSelect = { folderToToggle ->
-                                uiFolders = uiFolders.map {
-                                    if (it.folder.id == folderToToggle.id) it.copy(isSelected = !it.isSelected) else it
-                                }
-                                if (uiFolders.none { it.isSelected }) isSelectionMode = false
-                            }
-                        )
+                                },
+                                onClick = {
+                                    if (isNoteSelectionMode) {
+                                        if (isSelected) selectedNoteIds.remove(note.id)
+                                        else selectedNoteIds.add(note.id)
+                                        if (selectedNoteIds.isEmpty()) isNoteSelectionMode = false
+                                    } else {
+                                        onNoteClick(note.id) // Mở chi tiết note
+                                    }
+                                },
+                                onFavoriteClick = { viewModel.toggleFavorite(note) },
+                                onPinClick = { viewModel.togglePin(note) }
+                            )
+                        }
                     }
                 }
             }
-        }
-    }
 
-    if (showCreateDialog) {
-        CreateFolderDialog(
-            onDismiss = { showCreateDialog = false },
-            onConfirm = { name, color ->
-                val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
-                val newDomainFolder = Folder(
-                    id = UUID.randomUUID().toString(),
-                    name = name,
-                    colorHex = hex,
-                    createdAt = System.currentTimeMillis(),
-                    updatedAt = System.currentTimeMillis()
-                )
-                uiFolders = uiFolders + UiFolder(newDomainFolder)
-                showCreateDialog = false
-            }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FolderTopAppBar(
-    isSelectionMode: Boolean,
-    onBackClick: () -> Unit,
-    onCloseSelectionMode: () -> Unit
-) {
-    TopAppBar(
-        title = { Text("Quản lý thư mục", style = TextStyle(brush = TitleBrush, fontSize = 18.sp, fontWeight = FontWeight.Bold))},
-        navigationIcon = {
-            IconButton(onClick = if (isSelectionMode) onCloseSelectionMode else onBackClick) {
-                Icon(
-                    imageVector = if (isSelectionMode) Icons.Default.Close else Icons.Filled.ArrowBackIos,
-                    contentDescription = "Quay lại",
-                    tint = Purple
-                )
-            }
-        },
-        actions = {
-            IconButton(onClick = { /* Handle Search */ }) {
-                Icon(Icons.Default.Search, contentDescription = "Tìm kiếm", tint = Purple)
-            }
-            if (!isSelectionMode) {
-                IconButton(onClick = { /* Handle More */ }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Thêm", tint = Purple)
+            // --- MÀN HÌNH 2: DANH SÁCH FOLDER (MẶC ĐỊNH) ---
+            else {
+                // ... (Phần hiển thị danh sách Folder giữ nguyên như cũ) ...
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xffE5E7EB)))
+                Box(modifier = Modifier.fillMaxWidth().background(Color.Transparent), contentAlignment = Alignment.Center) {
+                    if (!isFolderSelectionMode) CreateFolderButton(onNewFolderClick = { showCreateDialog = true })
                 }
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-    )
-}
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xffE5E7EB)))
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NotesTopAppBar(folder: Folder, onBack: () -> Unit) {
-    TopAppBar(
-        title = {
-            Text(folder.name, style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold), color = Purple)
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBackIos, contentDescription = "Back", tint = Purple)
-            }
-        },
-        actions = {
-            IconButton(onClick = { /* search notes in folder */ }) {
-                Icon(Icons.Default.Search, contentDescription = "Tìm kiếm", tint = Purple)
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-    )
-}
-
-@Composable
-fun NotesScreen(folder: Folder, notes: List<Note>, onNoteClick: (Note) -> Unit) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (notes.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Không có ghi chú trong thư mục này", color = Color.Gray)
-            }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(notes, key = { it.id }) { note ->
-                    Card(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                if (state.isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                } else if (state.folders.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Chưa có thư mục nào", color = Color.Gray) }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(vertical = 12.dp),
+                        contentPadding = PaddingValues(bottom = if (isFolderSelectionMode) 80.dp else 0.dp)
                     ) {
-                        Column(modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                        ) {
-                            Text(text = note.title, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(4.dp))
-                            Text(text = note.contentPreview, color = Color.Gray, maxLines = 2)
+                        items(state.folders, key = { it.id }) { folder ->
+                            val isSelected = selectedFolderIds.contains(folder.id)
+                            FolderCard(
+                                folder = folder,
+                                isSelectionMode = isFolderSelectionMode,
+                                isSelected = isSelected,
+                                noteCount = state.noteCounts[folder.id] ?: 0,
+                                onFolderClick = { clickedFolder ->
+                                    if (isFolderSelectionMode) {
+                                        if (isSelected) selectedFolderIds.remove(clickedFolder.id)
+                                        else selectedFolderIds.add(clickedFolder.id)
+                                        if (selectedFolderIds.isEmpty()) isFolderSelectionMode = false
+                                    } else {
+                                        if (onFolderSelected != null) {
+                                            onFolderSelected(clickedFolder); onBackClick()
+                                        } else {
+                                            openedFolder = clickedFolder // Mở Folder
+                                        }
+                                    }
+                                },
+                                onFolderLongClick = { longClickedFolder ->
+                                    if (!isFolderSelectionMode) {
+                                        isFolderSelectionMode = true
+                                        selectedFolderIds.add(longClickedFolder.id)
+                                    }
+                                }
+                            )
                         }
                     }
                 }
             }
         }
     }
+
+    // --- CÁC DIALOG ---
+
+    // 1. Dialog Tạo Folder
+    if (showCreateDialog) {
+        CreateFolderDialog(
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { name, color ->
+                val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                viewModel.createFolder(Folder(id = "", name = name, colorHex = hex, createdAt = 0, updatedAt = 0))
+                showCreateDialog = false
+            }
+        )
+    }
+
+    // 2. Dialog Sửa Folder
+    if (showEditDialog && folderToEdit != null) {
+        CreateFolderDialog(
+            onDismiss = { showEditDialog = false; folderToEdit = null },
+            initialName = folderToEdit!!.name,
+            initialColor = hexToColor(folderToEdit!!.colorHex),
+            title = "Đổi tên thư mục", confirmButtonText = "Lưu thay đổi",
+            onConfirm = { name, color ->
+                val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                viewModel.createFolder(folderToEdit!!.copy(name = name, colorHex = hex, updatedAt = System.currentTimeMillis()))
+                showEditDialog = false; folderToEdit = null; isFolderSelectionMode = false; selectedFolderIds.clear()
+            }
+        )
+    }
+
+    // 3. Dialog Di chuyển Note (Mới)
+    if (showMoveNoteDialog) {
+        SelectFolderDialog(
+            folders = state.folders, // Danh sách folder để chọn đích đến
+            onDismiss = { showMoveNoteDialog = false },
+            onFolderSelected = { targetFolder ->
+                // Gọi ViewModel để di chuyển các note đang chọn
+                viewModel.moveNotesToFolder(selectedNoteIds.toList(), targetFolder?.id)
+
+                showMoveNoteDialog = false
+                isNoteSelectionMode = false
+                selectedNoteIds.clear()
+            }
+        )
+    }
 }
+
+// Cập nhật TopBar để hiển thị số lượng đã chọn
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderTopAppBar(
+    isSelectionMode: Boolean,
+    selectedCount: Int = 0, // Thêm tham số này
+    onBackClick: () -> Unit,
+    onCloseSelectionMode: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                if (isSelectionMode) "Đã chọn $selectedCount" else "Quản lý thư mục",
+                style = TextStyle(brush = TitleBrush, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = if (isSelectionMode) onCloseSelectionMode else onBackClick) {
+                Icon(if (isSelectionMode) Icons.Default.Close else Icons.Filled.ArrowBackIos, "Back", tint = Purple)
+            }
+        },
+        actions = { if (!isSelectionMode) IconButton(onClick = {}) { Icon(Icons.Default.Search, "Search", tint = Purple) } },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotesTopAppBar(
+    folder: Folder,
+    isSelectionMode: Boolean = false,
+    selectedCount: Int = 0,
+    onBack: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                if (isSelectionMode) "Đã chọn $selectedCount" else folder.name,
+                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
+                color = Purple
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(if (isSelectionMode) Icons.Default.Close else Icons.Filled.ArrowBackIos, "Back", tint = Purple)
+            }
+        },
+        actions = { if (!isSelectionMode) IconButton(onClick = {}) { Icon(Icons.Default.Search, "Search", tint = Purple) } },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+    )
+}
+
 
 @Composable
 fun CreateFolderButton(onNewFolderClick: () -> Unit) {
     Button(
         onClick = onNewFolderClick,
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .height(48.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp).height(48.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
         contentPadding = PaddingValues(0.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = TitleBrush,
-                    shape = RoundedCornerShape(12.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(brush = TitleBrush, shape = RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.CreateNewFolder, contentDescription = null, tint = Color.White)
+                Icon(Icons.Outlined.CreateNewFolder, null, tint = Color.White)
                 Spacer(Modifier.width(10.dp))
                 Text("Tạo thư mục mới", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
-    }
-}
-
-@Preview
-@Composable
-fun PreviewFolderScreen() {
-    MaterialTheme {
-        FolderScreen()
     }
 }

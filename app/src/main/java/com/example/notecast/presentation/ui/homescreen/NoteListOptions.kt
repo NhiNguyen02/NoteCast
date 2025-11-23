@@ -39,3 +39,11 @@ data class FilterOptions(
     val folderId: String? = null, // null = Tất cả thư mục
     val status: StatusFilter = StatusFilter.NONE
 )
+data class FilterCounts(
+    val voiceCount: Int = 0,
+    val textCount: Int = 0,
+    val pinnedCount: Int = 0,
+    val favoriteCount: Int = 0,
+    val folderCounts: Map<String, Int> = emptyMap(), // Key: folderId, Value: count
+    val allFoldersCount: Int = 0 // Tổng số note trong tất cả folder
+)

@@ -1,10 +1,10 @@
 package com.example.notecast.domain.usecase
 
-import com.example.notecast.domain.repository.AudioRepository
+import com.example.notecast.domain.repository.RecorderRepository
 import javax.inject.Inject
 
 class StartRecordingUseCase @Inject constructor(
-    private val repo: AudioRepository
+    private val repo: RecorderRepository
 ) {
     operator fun invoke() {
         repo.startRecording()
