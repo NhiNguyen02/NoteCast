@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,14 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.PrimaryAccent
-
-// --- Hằng số giả lập ---
-val cardHeight: Dp = 80.dp
-// ------------------------
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -38,14 +32,13 @@ fun FolderCard(
     isSelected: Boolean,
     noteCount: Int = 0,
     onFolderClick: (Folder) -> Unit,
-    onFolderLongClick: (Folder) -> Unit,
-    onToggleSelect: (Folder) -> Unit,
-    modifier: Modifier = Modifier
+    onFolderLongClick: (Folder) -> Unit
 ) {
-    // Convert hex (domain model) -> Compose Color
+    // Helper chuyển Hex String -> Color
     fun hexToColor(hex: String?): Color {
         return try {
-            if (hex.isNullOrBlank()) PrimaryAccent else Color(AndroidColor.parseColor(hex))
+            if (hex.isNullOrBlank()) PrimaryAccent
+            else Color(AndroidColor.parseColor(hex))
         } catch (e: Exception) {
             PrimaryAccent
         }
@@ -53,41 +46,31 @@ fun FolderCard(
 
     val folderTint = hexToColor(folder.colorHex)
 
-    val clickHandler = {
-        if (isSelectionMode) {
-            onToggleSelect(folder)
-        } else {
-            onFolderClick(folder)
-        }
-    }
-
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 16.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(Color.Transparent)
             .combinedClickable(
-                onClick = clickHandler,
+                onClick = { onFolderClick(folder) },
                 onLongClick = { onFolderLongClick(folder) }
             )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(cardHeight)
+                .height(80.dp) // Card Height cố định
                 .clip(RoundedCornerShape(10.dp))
                 .background(Color.White)
                 .then(
-                    // Viền: PrimaryAccent nếu được chọn, hoặc màu xám nhạt
                     if (isSelected) Modifier.border(BorderStroke(2.dp, PrimaryAccent), RoundedCornerShape(10.dp))
                     else Modifier.border(BorderStroke(1.dp, Color(0xFFE8E8F0)), RoundedCornerShape(10.dp))
                 )
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            // 1. Checkbox (Chỉ hiển thị khi đang ở chế độ chọn)
+            // 1. Checkbox
             if (isSelectionMode) {
                 Box(
                     modifier = Modifier
@@ -97,18 +80,13 @@ fun FolderCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSelected) {
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = "selected",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
             }
 
-            // 2. Folder Icon Tile
+            // 2. Icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -117,21 +95,16 @@ fun FolderCard(
                     .border(1.dp, folderTint.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Outlined.Folder,
-                    contentDescription = null,
-                    tint = folderTint.copy(alpha = 0.9f),
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Outlined.Folder, contentDescription = null, tint = folderTint.copy(alpha = 0.9f), modifier = Modifier.size(22.dp))
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 3. Tên và số lượng ghi chú
+            // 3. Tên & Số lượng
             Text(
                 text = folder.name,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color.Black
+                color = folderTint
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(

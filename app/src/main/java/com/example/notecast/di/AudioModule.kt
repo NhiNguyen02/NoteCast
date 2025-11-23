@@ -3,8 +3,8 @@ package com.example.notecast.di
 import android.content.Context
 import com.example.notecast.core.audio.AudioEngine
 import com.example.notecast.core.vad.VADManager
-import com.example.notecast.data.repository.AudioRepositoryImpl
-import com.example.notecast.domain.repository.AudioRepository
+import com.example.notecast.data.repository.RecorderRepositoryImpl
+import com.example.notecast.domain.repository.RecorderRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -22,11 +22,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class AudioModule {
 
-    @Binds
-    @Singleton
-    abstract fun bindAudioRepository(
-        audioRepositoryImpl: AudioRepositoryImpl
-    ): AudioRepository
 
     companion object {
         @Provides

@@ -28,7 +28,7 @@ import com.example.notecast.presentation.ui.common_components.AppDrawerContent
 import com.example.notecast.presentation.ui.dialog.CreateNoteDialog
 import com.example.notecast.presentation.ui.folderscreen.FolderScreen
 import com.example.notecast.presentation.ui.homescreen.HomeScreen
-//import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
+import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.ui.record.RecordingScreen
 import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
 import kotlinx.coroutines.launch
@@ -99,16 +99,19 @@ fun MainAppScreen() {
                     route = Screen.NoteEdit.routeWithArgs,
                     arguments = Screen.NoteEdit.arguments
                 ) {
-//                    NoteEditScreen(
-//                        onNavigateBack = { appNavController.popBackStack() }
-//                    )
+                    NoteEditScreen(
+                        onNavigateBack = { appNavController.popBackStack() }
+                    )
                 }
 
                 // 3. Màn hình FOLDER
                 composable(Screen.Folders.route) {
                     FolderScreen(
                         onBackClick = { appNavController.popBackStack() },
-                        onNewFolderClick = { /* Xử lý tạo folder */ },
+                        // Truyền callback này để khi click vào Note trong Folder, nó mở màn hình Edit
+                        onNoteClick = { noteId ->
+                            appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
+                        }
                     )
                 }
 
@@ -123,11 +126,9 @@ fun MainAppScreen() {
                 composable(Screen.Recording.route) {
                     RecordingScreen(
                         onClose = { appNavController.navigateUp() },
-                        availableFolders = listOf("Chưa phân loại"),
-                        onSaveFile = { folderName, recordedMs ->
-                            appNavController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Home.route) { inclusive = false }
-                            }
+                        onRecordingFinished = { newNoteId ->
+                            appNavController.popBackStack() // Đóng màn hình ghi âm
+                            appNavController.navigate(Screen.NoteEdit.createRoute(newNoteId)) // Mở màn hình Edit
                         }
                     )
                 }

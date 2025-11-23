@@ -225,14 +225,14 @@ fun SortScreen(
 @Composable
 private fun SortRow(title: String, subtitle: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit, showArrow: Boolean = true, cardHeight: Dp, titleTextStyle: TextStyle, subtitleTextStyle: TextStyle) {
     val iconSelectedTint = PrimaryAccent.copy(alpha = 0.95f)
-    val iconUnselectedTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val iconUnselectedTint = Color(0xff757575)
     Row(
         modifier = Modifier.fillMaxWidth().height(cardHeight).clip(RoundedCornerShape(12.dp)).background(Color.White)
             .then(if (selected) Modifier.border(BorderStroke(2.dp, PrimaryAccent), RoundedCornerShape(12.dp)) else Modifier.border(BorderStroke(1.dp, Color(0xFFE8E8F0)), RoundedCornerShape(12.dp)))
             .clickable { onClick() }.padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(28.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) PrimaryAccent else Color.Transparent).border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(24.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) PrimaryAccent else Color.Transparent).border(1.dp, if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else Color(0xffD1D5DB), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
             if (selected) Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)).background(Color.White)) else Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)))
         }
         Spacer(modifier = Modifier.width(10.dp))
