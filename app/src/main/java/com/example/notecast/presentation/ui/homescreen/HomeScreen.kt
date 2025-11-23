@@ -239,6 +239,7 @@ private fun HomeScreenContent(
                         else scope.launch { drawerState.open() }
                     }
                 )
+
                 Text(
                     text = if (isSelectionMode) "Đã chọn ${selectedNoteIds.size}" else "NOTECAST",
                     fontSize = 24.sp,
