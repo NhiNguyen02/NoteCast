@@ -1,5 +1,6 @@
 package com.example.notecast.presentation.ui.common_components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -17,57 +18,41 @@ import com.example.notecast.presentation.theme.Purple
 @Composable
 fun NoteSelectionBar(
     selectedCount: Int,
-    onSelectAllClick: () -> Unit,
     onMoveClick: () -> Unit, // Sự kiện di chuyển
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSelectAllClick() }
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            Text(
-                text = "Chọn tất cả",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
+        // Nút Di chuyển
+        ActionChip(
+            icon = Icons.Outlined.DriveFileMove,
+            label = "Di chuyển",
+            onClick = onMoveClick,
+            enabled = selectedCount > 0,
+            color = Purple
+        )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.width(48.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Nút Di chuyển
-            ActionChip(
-                icon = Icons.Outlined.DriveFileMove,
-                label = "Di chuyển",
-                onClick = onMoveClick,
-                enabled = selectedCount > 0,
-                color = Purple
-            )
-
-            Spacer(modifier = Modifier.width(48.dp))
-
-            // Nút Xóa
-            ActionChip(
-                icon = Icons.Outlined.Delete,
-                label = "Xóa",
-                onClick = onDeleteClick,
-                enabled = selectedCount > 0,
-                color = Color.Red
-            )
-        }
+        // Nút Xóa
+        ActionChip(
+            icon = Icons.Outlined.Delete,
+            label = "Xóa",
+            onClick = onDeleteClick,
+            enabled = selectedCount > 0,
+            color = Color.Red
+        )
     }
+
 }
 
 @Composable

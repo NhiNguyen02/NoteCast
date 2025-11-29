@@ -32,6 +32,7 @@ data class NoteEntity(
 
     val folderId: String? = null,
     val colorHex: String? = null,
+    val createdAt: Long,
     val updatedAt: Long,
     @ColumnInfo(defaultValue = "0") val isSynced: Boolean = false,
     @ColumnInfo(defaultValue = "0") val isDeleted: Boolean = false

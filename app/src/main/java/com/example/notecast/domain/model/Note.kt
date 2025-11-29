@@ -29,6 +29,7 @@ data class Note(
     val folderId: String? = null,
     val colorHex: String? = null,
     val updatedAt: Long,
+    val createdAt: Long,
 
     // === Thông tin Audio (Từ AudioEntity, nullable) ===
     val filePath: String? = null,       // local path
