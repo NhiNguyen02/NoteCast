@@ -81,6 +81,7 @@ object EntityMapper {
             folderId = noteEntity.folderId,
             colorHex = noteEntity.colorHex,
             updatedAt = noteEntity.updatedAt,
+            createdAt = noteEntity.createdAt,
             isDeleted = noteEntity.isDeleted, // Lấy từ NoteEntity chính
             isSynced = isGloballySynced, // Dùng logic đã tính
 
@@ -116,6 +117,7 @@ object EntityMapper {
         folderId = d.folderId,
         colorHex = d.colorHex,
         updatedAt = d.updatedAt,
+        createdAt = d.createdAt,
         isSynced = d.isSynced,
         isDeleted = d.isDeleted
     )
