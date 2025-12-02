@@ -29,3 +29,5 @@ output.json
 # Misc
 *.log
 *.tmp
+
+app/src/main/assets/phowhisper-base-onnx/*.onnx

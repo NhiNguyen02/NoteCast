@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.*
@@ -83,6 +84,7 @@ fun FolderScreen(
 
     Scaffold(
         containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (openedFolder == null) {
                 // --- TOP BAR DANH SÁCH FOLDER ---
@@ -93,6 +95,15 @@ fun FolderScreen(
                     onCloseSelectionMode = {
                         isFolderSelectionMode = false
                         selectedFolderIds.clear()
+                    },
+
+                    onSelectAllClick = {
+                        if (selectedFolderIds.size == state.folders.size)
+                            selectedFolderIds.clear()
+                        else {
+                            selectedFolderIds.clear()
+                            selectedFolderIds.addAll(state.folders.map { it.id })
+                        }
                     }
                 )
             } else {
@@ -108,7 +119,11 @@ fun FolderScreen(
                         } else {
                             openedFolder = null
                         }
-                    }
+                    },
+                    onSelectAllClick = {
+                        if (selectedNoteIds.size == state.folderNotes.size) selectedNoteIds.clear()
+                        else { selectedNoteIds.clear(); selectedNoteIds.addAll(state.folderNotes.map { it.id }) }
+                    },
                 )
             }
         },
@@ -117,10 +132,6 @@ fun FolderScreen(
             if (isFolderSelectionMode && openedFolder == null) {
                 SelectionBar(
                     selectedCount = selectedFolderIds.size,
-                    onSelectAllClick = {
-                        if (selectedFolderIds.size == state.folders.size) selectedFolderIds.clear()
-                        else { selectedFolderIds.clear(); selectedFolderIds.addAll(state.folders.map { it.id }) }
-                    },
                     onEditClick = {
                         val folderId = selectedFolderIds.firstOrNull()
                         if (folderId != null) {
@@ -131,7 +142,9 @@ fun FolderScreen(
                     onDeleteClick = {
                         selectedFolderIds.forEach { id -> viewModel.deleteFolder(id) }
                         isFolderSelectionMode = false; selectedFolderIds.clear()
-                    }
+                    },
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+
                 )
             }
 
@@ -139,16 +152,13 @@ fun FolderScreen(
             if (isNoteSelectionMode && openedFolder != null) {
                 NoteSelectionBar(
                     selectedCount = selectedNoteIds.size,
-                    onSelectAllClick = {
-                        if (selectedNoteIds.size == state.folderNotes.size) selectedNoteIds.clear()
-                        else { selectedNoteIds.clear(); selectedNoteIds.addAll(state.folderNotes.map { it.id }) }
-                    },
                     onMoveClick = { showMoveNoteDialog = true }, // Mở Dialog chọn folder đích
                     onDeleteClick = {
                         viewModel.deleteMultipleNotes(selectedNoteIds.toList())
                         isNoteSelectionMode = false
                         selectedNoteIds.clear()
-                    }
+                    },
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
                 )
             }
         }
@@ -169,7 +179,12 @@ fun FolderScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding( horizontal = 16.dp)
+                            .let {
+                                if (!isNoteSelectionMode) it.windowInsetsPadding(WindowInsets.navigationBars)
+                                else it.padding(bottom = 5.dp)
+                            }
                         ,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = if (isNoteSelectionMode) 80.dp else 0.dp)
                     ) {
                         items(state.folderNotes, key = { it.id }) { note ->
@@ -202,6 +217,7 @@ fun FolderScreen(
                             )
                         }
                     }
+
                 }
             }
 
@@ -220,7 +236,11 @@ fun FolderScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Chưa có thư mục nào", color = Color.Gray) }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(vertical = 12.dp),
+                        modifier = Modifier.fillMaxSize().padding(vertical = 12.dp)
+                            .let {
+                                if (!isFolderSelectionMode) it.windowInsetsPadding(WindowInsets.navigationBars)
+                                else it.padding(bottom = 5.dp)
+                            },
                         contentPadding = PaddingValues(bottom = if (isFolderSelectionMode) 80.dp else 0.dp)
                     ) {
                         items(state.folders, key = { it.id }) { folder ->
@@ -255,52 +275,52 @@ fun FolderScreen(
                 }
             }
         }
+        // --- CÁC DIALOG ---
+
+        // 1. Dialog Tạo Folder
+        if (showCreateDialog) {
+            CreateFolderDialog(
+                onDismiss = { showCreateDialog = false },
+                onConfirm = { name, color ->
+                    val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                    viewModel.createFolder(Folder(id = "", name = name, colorHex = hex, createdAt = 0, updatedAt = 0))
+                    showCreateDialog = false
+                }
+            )
+        }
+
+        // 2. Dialog Sửa Folder
+        if (showEditDialog && folderToEdit != null) {
+            CreateFolderDialog(
+                onDismiss = { showEditDialog = false; folderToEdit = null },
+                initialName = folderToEdit!!.name,
+                initialColor = hexToColor(folderToEdit!!.colorHex),
+                title = "Đổi tên thư mục", confirmButtonText = "Lưu thay đổi",
+                onConfirm = { name, color ->
+                    val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                    viewModel.createFolder(folderToEdit!!.copy(name = name, colorHex = hex, updatedAt = System.currentTimeMillis()))
+                    showEditDialog = false; folderToEdit = null; isFolderSelectionMode = false; selectedFolderIds.clear()
+                }
+            )
+        }
+
+        // 3. Dialog Di chuyển Note (Mới)
+        if (showMoveNoteDialog) {
+            SelectFolderDialog(
+                folders = state.folders, // Danh sách folder để chọn đích đến
+                onDismiss = { showMoveNoteDialog = false },
+                onFolderSelected = { targetFolder ->
+                    // Gọi ViewModel để di chuyển các note đang chọn
+                    viewModel.moveNotesToFolder(selectedNoteIds.toList(), targetFolder?.id)
+
+                    showMoveNoteDialog = false
+                    isNoteSelectionMode = false
+                    selectedNoteIds.clear()
+                }
+            )
+        }
     }
 
-    // --- CÁC DIALOG ---
-
-    // 1. Dialog Tạo Folder
-    if (showCreateDialog) {
-        CreateFolderDialog(
-            onDismiss = { showCreateDialog = false },
-            onConfirm = { name, color ->
-                val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
-                viewModel.createFolder(Folder(id = "", name = name, colorHex = hex, createdAt = 0, updatedAt = 0))
-                showCreateDialog = false
-            }
-        )
-    }
-
-    // 2. Dialog Sửa Folder
-    if (showEditDialog && folderToEdit != null) {
-        CreateFolderDialog(
-            onDismiss = { showEditDialog = false; folderToEdit = null },
-            initialName = folderToEdit!!.name,
-            initialColor = hexToColor(folderToEdit!!.colorHex),
-            title = "Đổi tên thư mục", confirmButtonText = "Lưu thay đổi",
-            onConfirm = { name, color ->
-                val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
-                viewModel.createFolder(folderToEdit!!.copy(name = name, colorHex = hex, updatedAt = System.currentTimeMillis()))
-                showEditDialog = false; folderToEdit = null; isFolderSelectionMode = false; selectedFolderIds.clear()
-            }
-        )
-    }
-
-    // 3. Dialog Di chuyển Note (Mới)
-    if (showMoveNoteDialog) {
-        SelectFolderDialog(
-            folders = state.folders, // Danh sách folder để chọn đích đến
-            onDismiss = { showMoveNoteDialog = false },
-            onFolderSelected = { targetFolder ->
-                // Gọi ViewModel để di chuyển các note đang chọn
-                viewModel.moveNotesToFolder(selectedNoteIds.toList(), targetFolder?.id)
-
-                showMoveNoteDialog = false
-                isNoteSelectionMode = false
-                selectedNoteIds.clear()
-            }
-        )
-    }
 }
 
 // Cập nhật TopBar để hiển thị số lượng đã chọn
@@ -310,6 +330,7 @@ fun FolderTopAppBar(
     isSelectionMode: Boolean,
     selectedCount: Int = 0, // Thêm tham số này
     onBackClick: () -> Unit,
+    onSelectAllClick: () -> Unit,
     onCloseSelectionMode: () -> Unit
 ) {
     TopAppBar(
@@ -324,7 +345,22 @@ fun FolderTopAppBar(
                 Icon(if (isSelectionMode) Icons.Default.Close else Icons.Filled.ArrowBackIos, "Back", tint = Purple)
             }
         },
-        actions = { if (!isSelectionMode) IconButton(onClick = {}) { Icon(Icons.Default.Search, "Search", tint = Purple) } },
+        actions = {
+            if (isSelectionMode) {
+                IconButton(onClick = onSelectAllClick) {
+                    Icon(
+                        imageVector = Icons.Default.DoneAll,
+                        contentDescription = "Select All",
+                        tint = Purple
+                    )
+                }
+            } else {
+                // Bình thường hiển thị Search như cũ
+                IconButton(onClick = {}) {
+                    Icon(Icons.Default.Search, "Search", tint = Purple)
+                }
+            }
+        },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
     )
 }
@@ -335,6 +371,7 @@ fun NotesTopAppBar(
     folder: Folder,
     isSelectionMode: Boolean = false,
     selectedCount: Int = 0,
+    onSelectAllClick: () -> Unit,
     onBack: () -> Unit
 ) {
     TopAppBar(
@@ -350,7 +387,17 @@ fun NotesTopAppBar(
                 Icon(if (isSelectionMode) Icons.Default.Close else Icons.Filled.ArrowBackIos, "Back", tint = Purple)
             }
         },
-        actions = { if (!isSelectionMode) IconButton(onClick = {}) { Icon(Icons.Default.Search, "Search", tint = Purple) } },
+        actions = {
+            if (isSelectionMode) {
+                IconButton(onClick = onSelectAllClick) {
+                    Icon(
+                        imageVector = Icons.Default.DoneAll,
+                        contentDescription = "Select All",
+                        tint = Purple
+                    )
+                }
+            }
+            else { Icon(Icons.Default.Search, "Search", tint = Purple) } },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
     )
 }

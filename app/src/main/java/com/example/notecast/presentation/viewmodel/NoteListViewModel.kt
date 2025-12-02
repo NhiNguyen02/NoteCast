@@ -89,9 +89,9 @@ class NoteListViewModel @Inject constructor(
 
                 SortBy.DATE_CREATED -> {
                     if (state.sortOptions.direction == SortDirection.DESCENDING)
-                        processingList.sortedByDescending { it.id } // ID thường tăng dần theo thời gian nếu là UUID v7 hoặc auto-inc, hoặc dùng updatedAt tạm
+                        processingList.sortedByDescending { it.createdAt } // Mới tạo nhất lên đầu
                     else
-                        processingList.sortedBy { it.id }
+                        processingList.sortedBy { it.createdAt }
                 } // (Tương tự)
                 SortBy.TITLE -> {
                     if (state.sortOptions.direction == SortDirection.DESCENDING)

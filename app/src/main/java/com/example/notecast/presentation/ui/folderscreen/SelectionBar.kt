@@ -1,5 +1,6 @@
 package com.example.notecast.presentation.ui.folderscreen
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -17,37 +18,17 @@ import com.example.notecast.presentation.theme.Purple
 @Composable
 fun SelectionBar(
     selectedCount: Int,
-    onSelectAllClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        // Text Chọn tất cả
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSelectAllClick() }
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            Text(
-                text ="Chọn tất cả",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary // Màu xanh/tím cho chữ
-            )
-        }
-
         Spacer(modifier = Modifier.height(8.dp))
 
         // Nút Sửa và Xóa
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -69,8 +50,8 @@ fun SelectionBar(
                 enabled = selectedCount > 0
             )
         }
-    }
 }
+
 
 @Composable
 private fun ActionChip(

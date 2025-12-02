@@ -62,7 +62,9 @@ class NoteEditViewModel @Inject constructor(
                         content = note.content ?: "",
                         noteType = note.noteType,
                         isFavorite = note.isFavorite, // Load trạng thái yêu thích
+                        pinTimestamp = note.pinTimestamp,
                         updatedAt = note.updatedAt,
+                        createdAt = note.createdAt,
                         folderId = note.folderId,
                         folderName = folderName,
                     )
@@ -138,7 +140,8 @@ class NoteEditViewModel @Inject constructor(
                     content = currentState.content,
                     noteType = currentState.noteType,
                     updatedAt = 0,
-                    pinTimestamp = null,
+                    createdAt = currentState.createdAt,
+                    pinTimestamp = currentState.pinTimestamp,
                     tags = emptyList(),
                     isFavorite = currentState.isFavorite, // Lưu trạng thái yêu thích
                     folderId = currentState.folderId,

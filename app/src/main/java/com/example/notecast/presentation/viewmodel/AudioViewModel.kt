@@ -27,6 +27,7 @@ class AudioViewModel @Inject constructor(
     private val resumeRecordingUseCase: ResumeRecordingUseCase,
     private val getRecordingStateUseCase: GetRecordingStateUseCase,
     private val trimAndExportWavUseCase: TrimAndExportWavUseCase,
+    private val transcribeAudioUseCase: TranscribeAudioUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
     private val application: Application
 ) : ViewModel() {
@@ -69,14 +70,18 @@ class AudioViewModel @Inject constructor(
             _processingPercent.value = 5
 
             val outDir = application.getExternalFilesDir(null) ?: File(application.filesDir, "records")
-            _processingPercent.value = 20
-
-            // 1. Xuất file WAV
+            _processingPercent.value = 10
+            // Xuất file WAV
             val result = trimAndExportWavUseCase(prePadding, postPadding, outDir)
-            _processingPercent.value = 80
+            _processingPercent.value = 30
+
+
+
 
             if (result.file != null) {
-                // 2. Tạo Note mới
+                val transcriptText = transcribeAudioUseCase(result.file)
+                _processingPercent.value = 90
+                // Tạo Note mới
                 val newNoteId = UUID.randomUUID().toString()
                 val newNote = Note(
                     id = newNoteId,
@@ -84,17 +89,18 @@ class AudioViewModel @Inject constructor(
                     noteType = "VOICE",
                     filePath = result.file.absolutePath, // Lưu đường dẫn file
                     durationMs = result.recordedMs,
-                    rawText = "Đang xử lý văn bản...", // Placeholder cho STT
+                    rawText = transcriptText, // Placeholder cho STT
                     updatedAt = System.currentTimeMillis(),
+                    createdAt = 0,
                     folderId = folderId,
-                    content = ""
+                    content = transcriptText
                 )
 
                 // 3. Lưu vào Database
                 saveNoteUseCase(newNote)
 
                 _processingPercent.value = 100
-                delay(150)
+                delay(500)
                 _processing.value = false
 
                 // 4. Trả về ID để điều hướng

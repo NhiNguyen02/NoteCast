@@ -58,13 +58,16 @@ fun SortScreen(
         SortOptionItem("Tiêu đề Z → A", "Sắp xếp theo thứ tự bảng chữ cái từ Z về A", Icons.Default.SortByAlpha)  // Index 1
     )
 
-    // 4. KHỞI TẠO STATE UI TỪ DOMAIN OPTIONS
+    // KHỞI TẠO STATE UI TỪ DOMAIN OPTIONS
     var selectedTimeIndex by remember {
         mutableIntStateOf(
             if (currentOptions.sortBy == SortBy.TITLE) -1
             else when (currentOptions.sortBy) {
-                SortBy.DATE_UPDATED -> 0
-                SortBy.DATE_CREATED -> if (currentOptions.direction == SortDirection.DESCENDING) 1 else 2
+                SortBy.DATE_CREATED -> {
+                    if (currentOptions.direction == SortDirection.DESCENDING) 0 // Mới tạo
+                    else 1 // Lâu nhất
+                }
+                SortBy.DATE_UPDATED -> 2 // Mới cập nhật
                 else -> 0
             }
         )
@@ -190,12 +193,11 @@ fun SortScreen(
                             scope.launch {
                                 pressedButton = FooterButton.APPLY
 
-                                // === LOGIC TẠO SortOptions MỚI ===
                                 val newOptions = if (selectedTimeIndex != -1) {
                                     when (selectedTimeIndex) {
-                                        0 -> SortOptions(SortBy.DATE_UPDATED, SortDirection.DESCENDING)
-                                        1 -> SortOptions(SortBy.DATE_CREATED, SortDirection.DESCENDING)
-                                        else -> SortOptions(SortBy.DATE_CREATED, SortDirection.ASCENDING)
+                                        0 -> SortOptions(SortBy.DATE_CREATED, SortDirection.DESCENDING) // Mới tạo
+                                        1 -> SortOptions(SortBy.DATE_CREATED, SortDirection.ASCENDING)  // Lâu nhất
+                                        else -> SortOptions(SortBy.DATE_UPDATED, SortDirection.DESCENDING) // Mới cập nhật
                                     }
                                 } else {
                                     when (selectedTitleIndex) {
@@ -203,8 +205,7 @@ fun SortScreen(
                                         else -> SortOptions(SortBy.TITLE, SortDirection.DESCENDING) // Z-A
                                     }
                                 }
-                                onApply(newOptions) // <-- Gửi ra ngoài
-                                // ================================
+                                onApply(newOptions) // Gửi về ViewModel
 
                                 delay(140)
                                 onClose()

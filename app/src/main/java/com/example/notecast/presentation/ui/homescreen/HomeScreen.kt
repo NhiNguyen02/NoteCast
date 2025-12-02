@@ -9,12 +9,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,12 +43,17 @@ import com.example.notecast.presentation.ui.sort.SortScreen
 import com.example.notecast.presentation.theme.LogoBrush
 import com.example.notecast.presentation.theme.MainButtonBrush
 import com.example.notecast.presentation.theme.PrimaryAccent
+import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.theme.TabButton2Brush
 import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
 import com.example.notecast.presentation.ui.dialog.SelectFolderDialog
 import com.example.notecast.presentation.viewmodel.NoteListViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+/**
+ * HomeScreen: nhẹ, không quản lý dialog. Khi user nhấn FAB, HomeScreen gọi onOpenCreateDialog()
+ */
 @Composable
 fun HomeScreen(
     drawerState: DrawerState,
@@ -182,20 +193,23 @@ private fun HomeScreenContent(
     onCloseSelectionMode: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val search = ""
 
     Scaffold(
         containerColor = Color.Transparent,
         modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             if (!isSelectionMode) {
                 Box(
                     modifier = Modifier
+                        .navigationBarsPadding()
                         .size(56.dp)
                         .shadow(elevation = 6.dp, shape = CircleShape)
                         .clip(CircleShape)
                         .background(brush = MainButtonBrush)
                         .clickable { onOpenCreateDialog() },
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
                 }
@@ -206,9 +220,10 @@ private fun HomeScreenContent(
             if (isSelectionMode) {
                 NoteSelectionBar(
                     selectedCount = selectedNoteIds.size,
-                    onSelectAllClick = onSelectAllClick,
                     onMoveClick = onMoveSelected,
-                    onDeleteClick = onDeleteSelected
+                    onDeleteClick = onDeleteSelected,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+
                 )
             }
         }
@@ -221,37 +236,16 @@ private fun HomeScreenContent(
         ) {
             Spacer(Modifier.height(16.dp))
             // --- HEADER ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(id = if (isSelectionMode) R.drawable.baseline_close_24 else R.drawable.outline_menu_24),
-                    contentDescription = "menu",
-                    tint = Color(0xff6200AE),
-                    modifier = Modifier.clickable {
-                        if (isSelectionMode) onCloseSelectionMode()
-                        else scope.launch { drawerState.open() }
-                    }
-                )
-
-                Text(
-                    text = if (isSelectionMode) "Đã chọn ${selectedNoteIds.size}" else "NOTECAST",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(brush = LogoBrush)
-                )
-                if (!isSelectionMode) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo),
-                        contentDescription = "App Logo",
-                        modifier = Modifier.size(36.dp)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.size(36.dp))
-                }
-            }
+            HomeTopAppBar(
+                isSelectionMode = isSelectionMode,
+                selectedCount = selectedNoteIds.size,
+                drawerState = drawerState,
+                scope = scope,
+                onCloseSelectionMode = {
+                    onCloseSelectionMode()
+                },
+                onSelectAllClick = onSelectAllClick,
+            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -376,7 +370,14 @@ private fun HomeScreenContent(
                     Text("Không tìm thấy kết quả phù hợp", color = Color.White.copy(alpha = 0.7f))
                 }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+
+                    modifier = Modifier
+                        .let {
+                            if (!isSelectionMode) it.windowInsetsPadding(WindowInsets.navigationBars)
+                            else it.padding(bottom = 5.dp)
+                        }
+                        .weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.filteredAndSortedNotes, key = { it.id }) { note ->
                         val folder = state.allFolders.find { it.id == note.folderId }
                         val folderName = folder?.name ?: "Chưa phân loại"
@@ -403,6 +404,73 @@ private fun HomeScreenContent(
             }
         }
     }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeTopAppBar(
+    isSelectionMode: Boolean,
+    selectedCount: Int,
+    drawerState: DrawerState,
+    scope: CoroutineScope,
+    onSelectAllClick: () -> Unit,
+    onCloseSelectionMode: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isSelectionMode) "Đã chọn $selectedCount" else "NOTECAST",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(brush = LogoBrush)
+                )
+            }
+        },
+
+        navigationIcon = {
+            Icon(
+                painter = painterResource(
+                    id = if (isSelectionMode) R.drawable.baseline_close_24
+                    else R.drawable.outline_menu_24
+                ),
+                contentDescription = "menu",
+                tint = Color(0xff6200AE),
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .clickable {
+                        if (isSelectionMode) onCloseSelectionMode()
+                        else scope.launch { drawerState.open() }
+                    }
+            )
+        },
+        actions = {
+            if (!isSelectionMode) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .size(36.dp)
+                )
+            }else{
+                IconButton(onClick = onSelectAllClick) {
+                    Icon(
+                        imageVector = Icons.Default.DoneAll,
+                        contentDescription = "Select All",
+                        tint = Purple
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent
+        )
+    )
 }
 
 //@Preview()
