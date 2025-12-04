@@ -23,17 +23,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.notecast.presentation.navigation.Screen
+import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.ui.common_components.AppDrawerContent
-import com.example.notecast.presentation.ui.common_components.sampleNotes
-import com.example.notecast.presentation.ui.sort.SortScreen
-import com.example.notecast.presentation.ui.filter.FilterScreen
 import com.example.notecast.presentation.ui.dialog.CreateNoteDialog
 import com.example.notecast.presentation.ui.folderscreen.FolderScreen
 import com.example.notecast.presentation.ui.homescreen.HomeScreen
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.ui.record.RecordingScreen
 import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
-import com.example.notecast.presentation.theme.Background
 import kotlinx.coroutines.launch
 
 @androidx.annotation.RequiresPermission(android.Manifest.permission.RECORD_AUDIO)
@@ -47,31 +44,16 @@ fun MainAppScreen() {
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
     var visualSelectedRoute by remember(currentRoute) { mutableStateOf(currentRoute) }
 
-    var searchQuery by remember { mutableStateOf("") }
-    val allNotes = remember { sampleNotes }
-
-    // Overlay / dialog states
+    // Trạng thái Dialog tạo ghi chú (Vẫn giữ ở đây vì nó điều hướng đi nơi khác)
     var showCreateDialog by remember { mutableStateOf(false) }
-    var showFilterScreen by remember { mutableStateOf(false) }
-    var showSortScreen by remember { mutableStateOf(false) }
 
-    // Ensure drawer closes automatically when navigating away (existing behavior)
+    // Tự động đóng Drawer khi chuyển màn hình
     LaunchedEffect(currentRoute) {
         if (currentRoute != Screen.Home.route && drawerState.isOpen) {
             scope.launch { drawerState.close() }
         }
     }
 
-    // If Filter/Sort/Dialogs are visible, close drawer and disable gestures so user can't open it underneath
-    LaunchedEffect(showFilterScreen, showSortScreen, showCreateDialog) {
-        if (showFilterScreen || showSortScreen || showCreateDialog) {
-            if (drawerState.isOpen) {
-                scope.launch { drawerState.close() }
-            }
-        }
-    }
-
-    // IMPORTANT: set gesturesEnabled = !showFilterScreen (and other overlays) so edge swipe/tap won't open drawer
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -88,7 +70,7 @@ fun MainAppScreen() {
                 }
             )
         },
-        gesturesEnabled = !showFilterScreen && !showSortScreen && !showCreateDialog // disable gestures while overlays shown
+        gesturesEnabled = !showCreateDialog
     ) {
         Surface(
             modifier = Modifier
@@ -101,61 +83,62 @@ fun MainAppScreen() {
                 startDestination = Screen.Home.route,
                 modifier = Modifier.fillMaxSize()
             ) {
+                // 1. Màn hình HOME
                 composable(Screen.Home.route) {
+                    // MainAppScreen không cần biết về Filter/Sort/Search nữa
                     HomeScreen(
                         drawerState = drawerState,
-                        notes = allNotes,
-                        searchQuery = searchQuery,
-                        onSearch = { newQuery -> searchQuery = newQuery },
-                        onFilterClick = { showFilterScreen = true },
-                        onSortClick = { showSortScreen = true },
                         onOpenCreateDialog = { showCreateDialog = true },
-                        onAddNoteClick = {},
-                        onToggleFavorite = {},
-                        onTogglePin = {}
+                        onNoteClick = { noteId ->
+                            appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
+                        }
                     )
                 }
 
-                composable(Screen.Folders.route) {
-                    FolderScreen(
-                        onBackClick = { appNavController.popBackStack() } ,
-                        onNewFolderClick = { showCreateDialog = true },
-                    )
-                }
-                composable(Screen.Notifications.route) { PlaceholderScreen(text = "Thông báo") }
-                composable(Screen.Settings.route) {
-                    SettingsScreen(
-                        onBackClick = {appNavController.popBackStack()}
-                    )
-
-                }
-
-                composable(Screen.Recording.route)  {
-                    RecordingScreen(navController = appNavController)
-                }
-
+                // 2. Màn hình EDIT (Sửa/Tạo)
                 composable(
                     route = Screen.NoteEdit.routeWithArgs,
                     arguments = Screen.NoteEdit.arguments
                 ) {
-                    // ViewModel (Hilt) sẽ tự động lấy noteId từ arguments
                     NoteEditScreen(
+                        onNavigateBack = { appNavController.popBackStack() }
+                    )
+                }
+
+                // 3. Màn hình FOLDER
+                composable(Screen.Folders.route) {
+                    FolderScreen(
+                        onBackClick = { appNavController.popBackStack() },
+                        // Truyền callback này để khi click vào Note trong Folder, nó mở màn hình Edit
+                        onNoteClick = { noteId ->
+                            appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
+                        }
+                    )
+                }
+
+                // 4. Màn hình SETTINGS
+                composable(Screen.Settings.route) {
+                    SettingsScreen(
                         onBackClick = { appNavController.popBackStack() }
                     )
                 }
+
+                // 5. Màn hình GHI ÂM
+                composable(Screen.Recording.route)  {
+                    RecordingScreen(
+                        onClose = { appNavController.navigateUp() },
+                        onRecordingFinished = { newNoteId ->
+                            appNavController.popBackStack() // Đóng màn hình ghi âm
+                            appNavController.navigate(Screen.NoteEdit.createRoute(newNoteId)) // Mở màn hình Edit
+                        }
+                    )
+                }
+
+                // Placeholder
+                composable(Screen.Notifications.route) { PlaceholderScreen("Thông báo") }
             }
 
-            // Show Filter overlay full-screen
-            if (showFilterScreen) {
-                FilterScreen(onClose = { showFilterScreen = false })
-            }
-
-            // Show Sort overlay full-screen
-            if (showSortScreen) {
-                SortScreen(onClose = { showSortScreen = false })
-            }
-
-            // Create note dialog: when user chooses a type, handle accordingly
+            // Dialog Tạo Ghi chú (Global)
             if (showCreateDialog) {
                 CreateNoteDialog(
                     onDismiss = { showCreateDialog = false },
@@ -163,7 +146,7 @@ fun MainAppScreen() {
                         showCreateDialog = false
                         when (type) {
                             "record" -> appNavController.navigate(Screen.Recording.route)
-                            "text" -> { appNavController.navigate(route = Screen.NoteEdit.createRoute(0)) }
+                            "text" -> appNavController.navigate(Screen.NoteEdit.createRoute("new"))
                         }
                     },
                     startAutoSummary = true

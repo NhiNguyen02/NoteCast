@@ -21,8 +21,6 @@ import androidx.compose.ui.window.Dialog
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
 
 // --- Hằng số UI ---
-
-// Danh sách màu sắc cho thư mục
 val FolderColors = listOf(
     Color(0xFF1E90FF), // Xanh dương
     Color(0xFF3CB371), // Xanh lá
@@ -30,17 +28,20 @@ val FolderColors = listOf(
     Color(0xFFDC143C), // Đỏ tươi
     Color(0xFF9370DB)  // Tím nhạt
 )
-// --- End Hằng số UI ---
 
 @Composable
 fun CreateFolderDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, color: Color) -> Unit
+    onConfirm: (name: String, color: Color) -> Unit,
+    // 1. THÊM CÁC THAM SỐ ĐỂ HỖ TRỢ SỬA (có giá trị mặc định cho lúc Tạo mới)
+    initialName: String = "",
+    initialColor: Color = FolderColors.first(),
+    title: String = "Tạo thư mục mới",
+    confirmButtonText: String = "Tạo thư mục"
 ) {
-    // State cho tên thư mục
-    var folderName by remember { mutableStateOf("") }
-    // State cho màu sắc được chọn (mặc định là màu đầu tiên)
-    var selectedColor by remember { mutableStateOf(FolderColors.first()) }
+    // 2. KHỞI TẠO STATE TỪ THAM SỐ INITIAL
+    var folderName by remember { mutableStateOf(initialName) }
+    var selectedColor by remember { mutableStateOf(initialColor) }
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -50,9 +51,9 @@ fun CreateFolderDialog(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Tiêu đề
+            // Tiêu đề (Dùng tham số title)
             Text(
-                text = "Tạo thư mục mới",
+                text = title,
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
@@ -61,7 +62,6 @@ fun CreateFolderDialog(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Mô tả
             Text(
                 text = "Nhập tên cho thư mục của bạn",
                 style = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.Center),
@@ -74,9 +74,7 @@ fun CreateFolderDialog(
                 text = "Tên thư mục",
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(bottom = 4.dp)
+                modifier = Modifier.align(Alignment.Start).padding(bottom = 4.dp)
             )
 
             OutlinedTextField(
@@ -104,9 +102,7 @@ fun CreateFolderDialog(
                 text = "Màu sắc",
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(bottom = 8.dp)
+                modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
             )
 
             Row(
@@ -134,89 +130,43 @@ fun CreateFolderDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Nút Hủy
                 Button(
                     onClick = onDismiss,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(50.dp)
-                        .padding(end = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White
-                    ),
+                    modifier = Modifier.weight(1f).height(50.dp).padding(end = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White),
                     shape = RoundedCornerShape(50)
                 ) {
                     Text("Hủy", fontWeight = FontWeight.Bold)
                 }
 
-                // Nút Tạo thư mục
                 Button(
                     onClick = { onConfirm(folderName, selectedColor) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(50.dp)
-                        .padding(start = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color(0xFF4B0082) // Màu Tím đậm cho chữ
-                    ),
+                    modifier = Modifier.weight(1f).height(50.dp).padding(start = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF4B0082)),
                     enabled = folderName.isNotBlank(),
                     shape = RoundedCornerShape(50)
                 ) {
-                    Text("Tạo thư mục", fontWeight = FontWeight.Bold)
+                    // Text nút (Dùng tham số confirmButtonText)
+                    Text(confirmButtonText, fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
 
-// Composable cho một vòng tròn màu sắc
+// (ColorCircle giữ nguyên)
 @Composable
-private fun ColorCircle(
-    color: Color,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val size = 36.dp
+private fun ColorCircle(color: Color, isSelected: Boolean, onClick: () -> Unit) {
+    val size = 40.dp
     val borderThickness = 4.dp
-
     Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(color)
-            .clickable(onClick = onClick),
+        modifier = Modifier.size(size).clip(CircleShape).background(Color.Transparent).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // Vòng viền trắng/xanh khi được chọn
+        Box(modifier = Modifier.size(size - borderThickness).clip(CircleShape).background(color))
         if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .size(size - borderThickness)
-                    .clip(CircleShape)
-                    .background(color), // Background bên trong
-            )
-            // Vòng viền ngoài
-            Box(
-                modifier = Modifier
-                    .size(size)
-                    .clip(CircleShape)
-                    .background(Color.Transparent)
-                    .border(borderThickness / 2, Color.White, CircleShape)
-            )
+
+            Box(modifier = Modifier.size(size).clip(CircleShape).background(color).border(borderThickness, Color.White.copy(0.7f), CircleShape))
         }
     }
 }
-
-@Preview
-@Composable
-fun PreviewCreateFolderDialog() {
-    MaterialTheme {
-        CreateFolderDialog(
-            onDismiss = {},
-            onConfirm = { name, color -> println("Tạo: $name, $color") }
-        )
-    }
-}
-

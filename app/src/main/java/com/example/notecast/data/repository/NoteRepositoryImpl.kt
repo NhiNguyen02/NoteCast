@@ -1,32 +1,91 @@
 package com.example.notecast.data.repository
 
+import com.example.notecast.data.local.dao.NoteDao
+import com.example.notecast.data.local.mapper.EntityMapper
 import com.example.notecast.domain.model.Note
 import com.example.notecast.domain.repository.NoteRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
-
-// Giả định Note Model đã được chuyển vào domain/model/Note.kt
-// (Hiện tại đang nằm trong ViewModel, sẽ chuyển sau)
+import javax.inject.Singleton
 
 /**
- * Implementation của NoteRepository, xử lý các nguồn dữ liệu (Firestore, Local DB).
- * Tạm thời, chúng ta sẽ giả lập dữ liệu.
+ * Implementation MỚI của NoteRepository.
+ * Chỉ phụ thuộc vào 1 DAO duy nhất: [NoteDao].
  */
+@Singleton
 class NoteRepositoryImpl @Inject constructor(
-    // @Inject internalDataSource: NoteLocalDataSource,
-    // @Inject externalDataSource: NoteRemoteDataSource
+    private val noteDao: NoteDao // <-- CHỈ INJECT 1 DAO
 ) : NoteRepository {
 
-    // Giả lập database
-    private val mockDb = mutableMapOf<Int, Note>()
-
-    override suspend fun getNoteById(noteId: Int): Note {
-        // Trong thực tế: Gọi Local DB hoặc Remote API
-        return mockDb[noteId] ?: throw NoSuchElementException("Note not found.")
+    /**
+     * LẤY (READ): Sử dụng mapper [noteWithDetailsToDomain]
+     */
+    override fun getAllNotes(): Flow<List<Note>> {
+        // 1. Gọi DAO, lấy về Flow<List<NoteWithDetails>> (POJO)
+        return noteDao.getAllNotes().map { listNwd ->
+            // 2. Map POJO -> Domain Model
+            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+        }
     }
 
+    override fun getNotesByFolder(folderId: String): Flow<List<Note>> {
+        return noteDao.getNotesByFolder(folderId).map { listNwd ->
+            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+        }
+    }
+
+    override fun getUncategorizedNotes(): Flow<List<Note>> {
+        return noteDao.getUncategorizedNotes().map { listNwd ->
+            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+        }
+    }
+
+    override fun getNoteById(id: String): Flow<Note?> {
+        // 1. Gọi DAO, lấy về Flow<NoteWithDetails?> (POJO)
+        return noteDao.getNoteWithDetails(id).map { nwd ->
+            // 2. Map POJO -> Domain Model (nếu không null)
+            nwd?.let { EntityMapper.noteWithDetailsToDomain(it) }
+        }
+    }
+
+    /**
+     * GHI (WRITE): Sử dụng các mapper "tách" (domainTo...Entity)
+     */
     override suspend fun saveNote(note: Note) {
-        // Trong thực tế: Lưu vào Local DB / Firestore
-        mockDb[note.id] = note
-        println("Repository: Note saved successfully with ID ${note.id}")
+        // "Tách" (split) 1 Domain Model [Note] thành 4 Entities
+        val noteEntity = EntityMapper.domainToNoteEntity(note).copy(isSynced = false)
+        val audioEntity = EntityMapper.domainToAudioEntity(note)?.copy(isSynced = false)
+        val transcriptEntity = EntityMapper.domainToTranscriptEntity(note)?.copy(isSynced = false)
+        val processedEntity = EntityMapper.domainToProcessedTextEntity(note)?.copy(isSynced = false)
+
+        // Ghi xuống CSDL
+        noteDao.upsertNote(noteEntity)
+
+        if (audioEntity != null) {
+            noteDao.upsertAudio(audioEntity)
+        }
+        if (transcriptEntity != null) {
+            noteDao.upsertTranscript(transcriptEntity)
+        }
+        if (processedEntity != null) {
+            noteDao.upsertProcessedText(processedEntity)
+        }
+    }
+
+    override suspend fun deleteNote(id: String) {
+        // Dùng "xóa mềm"
+        noteDao.softDeleteNote(id, System.currentTimeMillis())
+    }
+
+    override suspend fun searchNotes(query: String): List<Note> {
+        // TODO: Cần implement logic tìm kiếm
+        println("WARN: Search functionality is not yet implemented in DAO.")
+        return emptyList()
+    }
+
+    override suspend fun syncPending() {
+        // TODO: Implement sync logic
+        println("Sync logic is skipped.")
     }
 }

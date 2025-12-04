@@ -1,133 +1,153 @@
 package com.example.notecast.presentation.viewmodel
 
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.notecast.domain.model.Folder // SỬ DỤNG MODEL MỚI
-import com.example.notecast.domain.model.Note // SỬ DỤNG MODEL MỚI
-import com.example.notecast.domain.usecase.notes.SaveNoteUseCase
+import com.example.notecast.domain.model.Note
+import com.example.notecast.domain.usecase.GetAllFoldersUseCase
+import com.example.notecast.domain.usecase.GetNoteByIdUseCase
+import com.example.notecast.domain.usecase.SaveNoteUseCase
+import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
+import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Date
 import javax.inject.Inject
-
-// State của màn hình
-data class NoteEditScreenState(
-    val note: Note = Note(),
-    val isLoading: Boolean = false,
-    val isSummarizing: Boolean = false,
-    val errorMessage: String? = null
-)
 
 @HiltViewModel
 class NoteEditViewModel @Inject constructor(
+    private val getNoteByIdUseCase: GetNoteByIdUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
+    private val getAllFoldersUseCase: GetAllFoldersUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(NoteEditScreenState())
-    val state: StateFlow<NoteEditScreenState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(NoteEditState())
+    val state = _state.asStateFlow()
 
-    // Lấy noteId từ Navigation Arguments
-    // Note: Khi sử dụng Hilt, SavedStateHandle đã được tiêm tự động
-    private val noteId: Int? = savedStateHandle.get<Int>("noteId")
+    private val noteId: String? = savedStateHandle["noteId"]
 
     init {
-        if (noteId != null && noteId != 0) {
+        loadFolders()
+        if (noteId != null && noteId != "new" && noteId != "0") {
+            _state.update { it.copy(isLoading = true) }
             loadNote(noteId)
-        } else {
-            // Khởi tạo ghi chú mới với thư mục "Chưa phân loại"
-            _state.update {
-                it.copy(note = Note(folder = Folder(id = 0, name = "Chưa phân loại", noteCount = 0, color = Color.Transparent)))
+        }
+    }
+
+    private fun loadFolders() {
+        getAllFoldersUseCase().onEach { folders ->
+            _state.update { it.copy(availableFolders = folders) }
+            // Nếu đang có folderId, cập nhật lại folderName cho đúng
+            val currentFolder = folders.find { f -> f.id == _state.value.folderId }
+            if (currentFolder != null) {
+                _state.update { it.copy(folderName = currentFolder.name) }
             }
-        }
+        }.launchIn(viewModelScope)
     }
-
-    private fun loadNote(id: Int) {
-        _state.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
-            // TODO: Thay thế bằng Use Case getNoteById
-            val loadedNote = Note(
-                id = id,
-                title = "Tiêu đề ghi chú đã tải",
-                content = "Nội dung ghi chú đã được tải lên.",
-                folder = Folder(id = 1, name = "Công việc", noteCount = 24, color = Color(0xFF7B68EE)),
-                isPinned = true,
-                isFavorite = false
-            )
-            _state.update {
-                it.copy(note = loadedNote, isLoading = false)
-            }
-        }
-    }
-
-    // --- Hành động người dùng ---
-
-    fun onTitleChange(newTitle: String) {
-        _state.update {
-            it.copy(note = it.note.copy(title = newTitle, lastEdited = Date()))
-        }
-    }
-
-    fun onContentChange(newContent: String) {
-        _state.update {
-            it.copy(note = it.note.copy(content = newContent, lastEdited = Date()))
-        }
-    }
-
-    fun togglePin() {
-        _state.update {
-            it.copy(note = it.note.copy(isPinned = !it.note.isPinned, lastEdited = Date()))
-        }
-    }
-
-    fun toggleFavorite() {
-        _state.update {
-            it.copy(note = it.note.copy(isFavorite = !it.note.isFavorite, lastEdited = Date()))
-        }
-    }
-
-    fun saveNote() {
-        viewModelScope.launch {
-            try {
-                // Gọi Use Case để xử lý logic lưu
-                saveNoteUseCase(_state.value.note)
-                println("Note saved successfully!")
-                // TODO: Điều hướng trở lại sau khi lưu thành công
-            } catch (e: Exception) {
+    private fun loadNote(id: String) {
+        getNoteByIdUseCase(id).onEach { note ->
+            if (note != null) {
+                val folderName = _state.value.availableFolders.find { it.id == note.folderId }?.name ?: "Chưa phân loại"
                 _state.update {
-                    it.copy(errorMessage = e.message)
+                    it.copy(
+                        isLoading = false,
+                        noteId = note.id,
+                        title = note.title,
+                        content = note.content ?: "",
+                        noteType = note.noteType,
+                        isFavorite = note.isFavorite, // Load trạng thái yêu thích
+                        pinTimestamp = note.pinTimestamp,
+                        updatedAt = note.updatedAt,
+                        createdAt = note.createdAt,
+                        folderId = note.folderId,
+                        folderName = folderName,
+                    )
+                }
+            } else {
+                _state.update { it.copy(isLoading = false, error = "Không tìm thấy") }
+            }
+        }.launchIn(viewModelScope)
+    }
+
+    fun onEvent(event: NoteEditEvent) {
+        when (event) {
+            is NoteEditEvent.OnTitleChanged -> {
+                _state.update { it.copy(title = event.title) }
+            }
+            is NoteEditEvent.OnContentChanged -> {
+                _state.update { it.copy(content = event.content) }
+            }
+            is NoteEditEvent.OnToggleFavorite -> {
+                _state.update { it.copy(isFavorite = !it.isFavorite) }
+            }
+            is NoteEditEvent.OnSaveNote -> {
+                saveNote()
+            }
+            is NoteEditEvent.OnFolderSelected -> {
+                val folderId = event.folder?.id
+                val folderName = event.folder?.name ?: "Chưa phân loại"
+                _state.update {
+                    it.copy(
+                        folderId = folderId,
+                        folderName = folderName
+                    )
                 }
             }
-        }
-    }
-
-    // --- Hành động AI ---
-
-    fun summarizeNote() {
-        _state.update { it.copy(isSummarizing = true) }
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(2000)
-            val newContent = "Nội dung đã được tóm tắt (ngắn gọn hơn nhiều)."
-            _state.update { currentState ->
-                currentState.copy(
-                    note = currentState.note.copy(content = newContent, lastEdited = Date()),
-                    isSummarizing = false
+            // --- XỬ LÝ AI (GIẢ LẬP) ---
+            is NoteEditEvent.OnSummarize -> {
+                simulateAiProcess(
+                    onStart = { _state.update { it.copy(isSummarizing = true) } },
+                    onEnd = { _state.update { it.copy(isSummarizing = false, content = it.content + "\n\n[Tóm tắt]: Nội dung đã được tóm tắt.") } }
+                )
+            }
+            is NoteEditEvent.OnNormalize -> {
+                simulateAiProcess(
+                    onStart = { _state.update { it.copy(isNormalizing = true) } },
+                    onEnd = { _state.update { it.copy(isNormalizing = false, content = it.content.trim()) } } // Ví dụ trim
+                )
+            }
+            is NoteEditEvent.OnGenerateMindMap -> {
+                simulateAiProcess(
+                    onStart = { _state.update { it.copy(isGeneratingMindMap = true) } },
+                    onEnd = { _state.update { it.copy(isGeneratingMindMap = false) } }
                 )
             }
         }
     }
 
-    fun normalizeNote() {
-        println("Normalizing note...")
+    // Hàm giả lập xử lý AI (delay 2 giây)
+    private fun simulateAiProcess(onStart: () -> Unit, onEnd: () -> Unit) {
+        viewModelScope.launch {
+            onStart()
+            delay(2000)
+            onEnd()
+        }
     }
 
-    fun generateMindMap() {
-        println("Generating Mind Map...")
+    private fun saveNote() {
+        viewModelScope.launch {
+            val currentState = _state.value
+            saveNoteUseCase(
+                Note(
+                    id = currentState.noteId ?: "",
+                    title = currentState.title,
+                    content = currentState.content,
+                    noteType = currentState.noteType,
+                    updatedAt = 0,
+                    createdAt = currentState.createdAt,
+                    pinTimestamp = currentState.pinTimestamp,
+                    tags = emptyList(),
+                    isFavorite = currentState.isFavorite, // Lưu trạng thái yêu thích
+                    folderId = currentState.folderId,
+                )
+            )
+            _state.update { it.copy(isSaved = true) }
+        }
     }
 }
