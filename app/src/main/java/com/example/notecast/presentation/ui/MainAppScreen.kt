@@ -36,6 +36,7 @@ import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
 import com.example.notecast.presentation.theme.Background
 import kotlinx.coroutines.launch
 
+@androidx.annotation.RequiresPermission(android.Manifest.permission.RECORD_AUDIO)
 @Composable
 fun MainAppScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -129,7 +130,7 @@ fun MainAppScreen() {
 
                 }
 
-                composable(Screen.Recording.route) {
+                composable(Screen.Recording.route)  {
                     RecordingScreen(navController = appNavController)
                 }
 
