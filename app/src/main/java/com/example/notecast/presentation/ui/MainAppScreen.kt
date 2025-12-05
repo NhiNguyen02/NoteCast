@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.notecast.presentation.viewmodel.NoteListViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -31,13 +33,26 @@ import com.example.notecast.presentation.ui.homescreen.HomeScreen
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.ui.record.RecordingScreen
 import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
+import com.example.notecast.presentation.ui.debug.TokenizerDebugScreen
 import kotlinx.coroutines.launch
+import androidx.navigation.NavBackStackEntry
 
 @Composable
 fun MainAppScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val appNavController = rememberNavController()
+
+    // Nếu sau này vẫn muốn warmup nhẹ (chỉ tokenizer), có thể bật lại đoạn này.
+    // Hiện tại tắt warmup để tránh block main thread lúc startup.
+    // val noteListViewModel: NoteListViewModel = hiltViewModel()
+    // var asrWarmedUp by remember { mutableStateOf(false) }
+    // LaunchedEffect(Unit) {
+    //     if (!asrWarmedUp) {
+    //         noteListViewModel.warmupAsr()
+    //         asrWarmedUp = true
+    //     }
+    // }
 
     val navBackStackEntry by appNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
@@ -90,7 +105,8 @@ fun MainAppScreen() {
                         onOpenCreateDialog = { showCreateDialog = true },
                         onNoteClick = { noteId ->
                             appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
-                        }
+                        },
+                        navController = appNavController
                     )
                 }
 
@@ -98,9 +114,10 @@ fun MainAppScreen() {
                 composable(
                     route = Screen.NoteEdit.routeWithArgs,
                     arguments = Screen.NoteEdit.arguments
-                ) {
+                ) { backStackEntry: NavBackStackEntry ->
                     NoteEditScreen(
-                        onNavigateBack = { appNavController.popBackStack() }
+                        onNavigateBack = { appNavController.popBackStack() },
+                        backStackEntry = backStackEntry,
                     )
                 }
 
@@ -126,12 +143,27 @@ fun MainAppScreen() {
                 composable(Screen.Recording.route) {
                     RecordingScreen(
                         onClose = { appNavController.navigateUp() },
-                        onRecordingFinished = { newNoteId ->
-                            appNavController.popBackStack() // Đóng màn hình ghi âm
-                            appNavController.navigate(Screen.NoteEdit.createRoute(newNoteId)) // Mở màn hình Edit
+                        onRecordingFinished = { transcript, audioFilePath, durationMs, sampleRate, channels ->
+                            appNavController.popBackStack()
+                            appNavController.navigate(
+                                Screen.NoteEdit.createRouteWithTranscript(
+                                    noteId = "new_voice",
+                                    initialContent = transcript,
+                                    audioPath = audioFilePath,
+                                    durationMs = durationMs,
+                                    sampleRate = sampleRate,
+                                    channels = channels,
+                                )
+                            )
                         }
                     )
                 }
+
+                // 6. Tokenizer Debug (truy cập từ HomeScreen)
+                composable(Screen.TokenizerDebug.route) {
+                    TokenizerDebugScreen()
+                }
+
 
                 // Placeholder
                 composable(Screen.Notifications.route) { PlaceholderScreen("Thông báo") }

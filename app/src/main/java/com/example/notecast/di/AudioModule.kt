@@ -1,20 +1,21 @@
 package com.example.notecast.di
 
 import android.content.Context
+import com.example.notecast.core.audio.AudioBuffer
 import com.example.notecast.core.audio.AudioEngine
+import com.example.notecast.core.audio.AudioRecorder
+import com.example.notecast.core.audio.RingAudioBuffer
 import com.example.notecast.core.vad.VADManager
-import com.example.notecast.data.repository.RecorderRepositoryImpl
-import com.example.notecast.domain.repository.RecorderRepository
-import dagger.Binds
+import com.example.notecast.core.vad.Segmenter
+import com.example.notecast.data.vad.rms.RmsVADImpl
+import com.example.notecast.domain.vad.VADDetector
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -22,23 +23,60 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class AudioModule {
 
-
     companion object {
         @Provides
         @Singleton
-        fun provideAppScope(): CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        fun provideAudioRecorder(): AudioRecorder = AudioRecorder()
 
         @Provides
         @Singleton
-        fun provideAudioEngine(scope: CoroutineScope): AudioEngine = AudioEngine(scope)
+        @Named("vadBuffer")
+        fun provideVadBuffer(): AudioBuffer<ShortArray> = RingAudioBuffer(capacityFrames = 50) // ~1s nếu frame 20ms
 
         @Provides
         @Singleton
-        fun provideVADManager(@ApplicationContext context: Context): VADManager = VADManager(context, hangoverMs = 300)
+        @Named("asrBuffer")
+        fun provideAsrBuffer(): AudioBuffer<ShortArray> = RingAudioBuffer(capacityFrames = 200)
+
+        @Provides
+        @Singleton
+        @Named("recorderBuffer")
+        fun provideRecorderBuffer(): AudioBuffer<ShortArray> = RingAudioBuffer(capacityFrames = 200)
+
+        @Provides
+        @Singleton
+        fun provideAudioEngine(
+            recorder: AudioRecorder,
+            @Named("vadBuffer") vadBuffer: AudioBuffer<ShortArray>,
+            @Named("asrBuffer") asrBuffer: AudioBuffer<ShortArray>,
+            @Named("recorderBuffer") recorderBuffer: AudioBuffer<ShortArray>,
+        ): AudioEngine = AudioEngine(
+            recorder = recorder,
+            vadBuffer = vadBuffer,
+            asrBuffer = asrBuffer,
+            recorderBuffer = recorderBuffer,
+        )
+
+        @Provides
+        @Singleton
+        fun provideVADManager(@ApplicationContext context: Context): VADManager = VADManager(context)
 
         @Provides
         @Singleton
         @Named("IO")
         fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+        @Provides
+        @Singleton
+        fun provideVADDetector(): VADDetector = RmsVADImpl(frameSize = 320)
+
+        @Provides
+        @Singleton
+        fun provideSegmenter(): Segmenter = Segmenter(
+            sampleRate = 16_000,
+            frameSize = 320,
+            hangoverMs = 300,
+            prerollMs = 150,
+        )
     }
 }

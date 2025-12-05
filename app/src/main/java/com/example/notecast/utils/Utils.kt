@@ -1,6 +1,9 @@
 package com.example.notecast.utils
 
 import android.annotation.SuppressLint
+import android.content.Context
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 /** Timer helper **/
@@ -10,4 +13,21 @@ fun formatElapsed(ms: Long): String {
     val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
     val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
     return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+}
+
+fun copyAssetToFile(context: Context, assetPath: String, outFileName: String): File {
+    val outFile = File(context.filesDir, "onnx/$outFileName")
+    if (!outFile.parentFile.exists()) {
+        outFile.parentFile.mkdirs()
+    }
+
+    // Always overwrite to ensure we use the latest model from assets
+    // This is important when models are updated in assets but the app is reinstalled
+    context.assets.open(assetPath).use { input ->
+        FileOutputStream(outFile).use { output ->
+            input.copyTo(output)
+        }
+    }
+
+    return outFile
 }

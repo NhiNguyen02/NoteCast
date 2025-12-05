@@ -21,6 +21,12 @@ data class NoteEditState(
     val folderName: String = "Chưa phân loại", // Tên hiển thị trên Chip
     val availableFolders: List<Folder> = emptyList(), // Danh sách folder để chọn
 
+    // Metadata audio cho VOICE note (có thể null đối với TEXT note)
+    val audioFilePath: String? = null,
+    val audioDurationMs: Long? = null,
+    val audioSampleRate: Int? = null,
+    val audioChannels: Int? = null,
+
     // Trạng thái xử lý AI (để hiện loading spinner trên chip)
     val isSummarizing: Boolean = false,
     val isNormalizing: Boolean = false,

@@ -30,4 +30,9 @@ output.json
 *.log
 *.tmp
 
-app/src/main/assets/phowhisper-base-onnx/*.onnx
+app/src/main/assets/phowhisper_base_onnx/*
+app/src/main/assets/
+
+*.onnx
+
+docs/

@@ -7,9 +7,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.notecast.domain.repository.PreferencesRepository
 import com.example.notecast.presentation.ui.MainAppScreen
-// Import đúng: MainAppScreen nằm ở package navigation
 import com.example.notecast.presentation.ui.onboarding.OnboardingScreen
 import com.example.notecast.presentation.ui.splashscreen.SplashScreen
+import com.example.notecast.presentation.ui.debug.TokenizerDebugScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -38,6 +38,11 @@ fun RootNavGraph(navController: NavHostController, preferences: PreferencesRepos
 
         composable(Screen.Main.route) {
             MainAppScreen()
+        }
+
+        // Debug tokenizer screen route
+        composable(Screen.TokenizerDebug.route) {
+            TokenizerDebugScreen()
         }
     }
 }

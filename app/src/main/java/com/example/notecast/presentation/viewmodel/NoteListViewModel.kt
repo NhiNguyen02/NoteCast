@@ -8,6 +8,7 @@ import com.example.notecast.domain.usecase.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.GetAllNotesUseCase
 import com.example.notecast.domain.usecase.GetNotesByFolderUseCase
 import com.example.notecast.domain.usecase.SaveNoteUseCase
+import com.example.notecast.domain.usecase.WarmupAsrUseCase
 import com.example.notecast.presentation.ui.homescreen.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -20,7 +21,8 @@ class NoteListViewModel @Inject constructor(
     getAllFoldersUseCase: GetAllFoldersUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
-    private val getNotesByFolderUseCase: GetNotesByFolderUseCase
+    private val getNotesByFolderUseCase: GetNotesByFolderUseCase,
+    private val warmupAsrUseCase: WarmupAsrUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NoteListState())
@@ -173,5 +175,9 @@ class NoteListViewModel @Inject constructor(
                 saveNoteUseCase(updatedNote)
             }
         }
+    }
+
+    suspend fun warmupAsr() {
+        warmupAsrUseCase()
     }
 }

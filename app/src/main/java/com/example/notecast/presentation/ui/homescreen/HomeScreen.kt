@@ -33,13 +33,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.R
 import com.example.notecast.presentation.ui.common_components.NoteCard
 import android.graphics.Color as AndroidColor
 import com.example.notecast.presentation.ui.filter.FilterScreen
 import com.example.notecast.presentation.ui.sort.SortScreen
-
 import com.example.notecast.presentation.theme.LogoBrush
 import com.example.notecast.presentation.theme.MainButtonBrush
 import com.example.notecast.presentation.theme.PrimaryAccent
@@ -50,6 +50,8 @@ import com.example.notecast.presentation.ui.dialog.SelectFolderDialog
 import com.example.notecast.presentation.viewmodel.NoteListViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.navigation.NavController
+import com.example.notecast.presentation.navigation.Screen
 
 /**
  * HomeScreen: nhẹ, không quản lý dialog. Khi user nhấn FAB, HomeScreen gọi onOpenCreateDialog()
@@ -59,6 +61,7 @@ fun HomeScreen(
     drawerState: DrawerState,
     onOpenCreateDialog: () -> Unit,
     onNoteClick: (String) -> Unit,
+    navController: NavController,
     // ViewModel được inject tự động tại đây
     viewModel: NoteListViewModel = hiltViewModel()
 ) {
@@ -71,6 +74,10 @@ fun HomeScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     val selectedNoteIds = remember { mutableStateListOf<String>() }
 
+    // Loading khi bấm tạo note ghi âm nhưng chưa điều hướng xong
+    // Logic điều hướng sang màn Recording đã được xử lý ở MainAppScreen thông qua onOpenCreateDialog.
+    // Vì vậy, HomeScreen không còn tự navigate nữa mà chỉ gọi callback.
+    var isNavigatingToRecord by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -83,7 +90,10 @@ fun HomeScreen(
             onEvent = viewModel::onEvent,
             onFilterClick = { showFilterDialog = true },
             onSortClick = { showSortDialog = true },
-            onOpenCreateDialog = onOpenCreateDialog,
+            onOpenCreateDialog = {
+                // Ủy quyền cho MainAppScreen hiển thị CreateNoteDialog và điều hướng tương ứng
+                onOpenCreateDialog()
+            },
 
             // Xử lý click vào note
             onNoteClick = { noteId ->
@@ -132,8 +142,29 @@ fun HomeScreen(
             onCloseSelectionMode = {
                 isSelectionMode = false
                 selectedNoteIds.clear()
+            },
+
+            // Xử lý mở màn hình TokenizerDebug
+            onOpenTokenizerDebug = {
+                navController.navigate(Screen.TokenizerDebug.route)
             }
         )
+
+        // Overlay loading khi chuẩn bị chuyển sang màn ghi âm
+        // Giữ lại state này nếu sau này cần hiển thị trong Home khi MainAppScreen đang xử lý điều hướng.
+        if (isNavigatingToRecord) {
+            Dialog(onDismissRequest = { }) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black.copy(alpha = 0.6f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                }
+            }
+        }
 
 
         if (showFilterDialog) {
@@ -190,7 +221,8 @@ private fun HomeScreenContent(
     onSelectAllClick: () -> Unit,
     onDeleteSelected: () -> Unit,
     onMoveSelected: () -> Unit,
-    onCloseSelectionMode: () -> Unit
+    onCloseSelectionMode: () -> Unit,
+    onOpenTokenizerDebug: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val search = ""
@@ -201,17 +233,33 @@ private fun HomeScreenContent(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             if (!isSelectionMode) {
-                Box(
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .size(56.dp)
-                        .shadow(elevation = 6.dp, shape = CircleShape)
-                        .clip(CircleShape)
-                        .background(brush = MainButtonBrush)
-                        .clickable { onOpenCreateDialog() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
+                Column {
+                    // New debug button on top
+//                    Box(
+//                        modifier = Modifier
+//                            .padding(bottom = 8.dp)
+//                            .size(56.dp)
+//                            .shadow(elevation = 6.dp, shape = CircleShape)
+//                            .clip(CircleShape)
+//                            .background(Color.Gray)
+//                            .clickable { onOpenTokenizerDebug() },
+//                        contentAlignment = Alignment.Center,
+//                    ) {
+//                        Text(text = "Test\nTok", color = Color.White, fontSize = 10.sp)
+//                    }
+                    // Existing FAB below
+                    Box(
+                        modifier = Modifier
+                            .navigationBarsPadding()
+                            .size(56.dp)
+                            .shadow(elevation = 6.dp, shape = CircleShape)
+                            .clip(CircleShape)
+                            .background(brush = MainButtonBrush)
+                            .clickable { onOpenCreateDialog() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
+                    }
                 }
             }
         },
@@ -472,25 +520,3 @@ fun HomeTopAppBar(
         )
     )
 }
-
-//@Preview()
-//@Composable
-//fun PreviewHomeScreen() {
-//    val previewDrawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-//    val notes = listOf<Note>()
-//    val previewState = NoteListState(
-//        isLoading = false,
-//        allNotes = notes,
-//        filteredAndSortedNotes = notes
-//    )
-//
-//    HomeScreenContent(
-//        drawerState = previewDrawerState,
-//        state = previewState,
-//        onEvent = {},
-//        onFilterClick = {},
-//        onSortClick = {},
-//        onOpenCreateDialog = {},
-//        onNoteClick = {}
-//    )
-//}

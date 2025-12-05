@@ -1,8 +1,6 @@
 package com.example.notecast.presentation.ui.noteeditscreen
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -13,32 +11,33 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIos
 import androidx.compose.material.icons.outlined.AutoFixHigh
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import android.graphics.Color as AndroidColor
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
 import com.example.notecast.R
 import com.example.notecast.domain.model.Folder
+import com.example.notecast.presentation.navigation.Screen
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
-import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
 import com.example.notecast.presentation.viewmodel.NoteEditViewModel
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -49,8 +48,23 @@ import java.util.Locale
 @Composable
 fun NoteEditScreen(
     onNavigateBack: () -> Unit,
-    viewModel: NoteEditViewModel = hiltViewModel()
+    viewModel: NoteEditViewModel = hiltViewModel(),
+    backStackEntry: NavBackStackEntry? = null,
 ) {
+    LaunchedEffect(backStackEntry) {
+        backStackEntry?.arguments?.let { args ->
+            val rawInitial = args.getString(Screen.NoteEdit.initialContentArg) ?: ""
+            val decodedInitial = try {
+                URLDecoder.decode(rawInitial, StandardCharsets.UTF_8.toString())
+            } catch (e: IllegalArgumentException) {
+                rawInitial
+            }
+            if (decodedInitial.isNotBlank()) {
+                viewModel.onEvent(NoteEditEvent.OnContentChanged(decodedInitial))
+            }
+        }
+    }
+
     // 1. Lấy State từ ViewModel
     val state by viewModel.state.collectAsState()
     var showFolderDialog by remember { mutableStateOf(false) }
@@ -145,7 +159,7 @@ fun NoteEditScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color.White.copy(0.5f))
-                            .padding(16.dp)
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
                     ) {
                         BasicTextField(
                             value = state.content,
@@ -154,7 +168,8 @@ fun NoteEditScreen(
                             },
                             textStyle = TextStyle(
                                 fontSize = 16.sp,
-                                color = Color.Black
+                                color = Color.Black,
+                                textAlign = TextAlign.Justify
                             ),
                             decorationBox = { innerTextField ->
                                 if (state.content.isEmpty()) {

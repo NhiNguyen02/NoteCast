@@ -31,12 +31,34 @@ class NoteEditViewModel @Inject constructor(
     val state = _state.asStateFlow()
 
     private val noteId: String? = savedStateHandle["noteId"]
+    private val initialContent: String? = savedStateHandle["initialContent"]
+    private val audioPath: String? = savedStateHandle["audioPath"]
+    private val durationMs: Long = savedStateHandle["durationMs"] ?: 0L
+    private val sampleRate: Int = savedStateHandle["sampleRate"] ?: 0
+    private val channels: Int = savedStateHandle["channels"] ?: 0
 
     init {
         loadFolders()
-        if (noteId != null && noteId != "new" && noteId != "0") {
-            _state.update { it.copy(isLoading = true) }
-            loadNote(noteId)
+        when {
+            noteId != null && noteId != "new" && noteId != "0" && noteId != "new_voice" -> {
+                _state.update { it.copy(isLoading = true) }
+                loadNote(noteId)
+            }
+            noteId == "new_voice" -> {
+                // Khởi tạo màn Edit cho VOICE note mới với transcript ban đầu
+                _state.update {
+                    it.copy(
+                        noteId = "",
+                        noteType = "VOICE",
+                        content = initialContent.orEmpty(),
+                        audioFilePath = audioPath?.takeIf { it.isNotEmpty() },
+                        audioDurationMs = durationMs.takeIf { it > 0L },
+                        audioSampleRate = sampleRate.takeIf { it > 0 },
+                        audioChannels = channels.takeIf { it > 0 },
+                        isLoading = false,
+                    )
+                }
+            }
         }
     }
 
@@ -133,20 +155,24 @@ class NoteEditViewModel @Inject constructor(
     private fun saveNote() {
         viewModelScope.launch {
             val currentState = _state.value
-            saveNoteUseCase(
-                Note(
-                    id = currentState.noteId ?: "",
-                    title = currentState.title,
-                    content = currentState.content,
-                    noteType = currentState.noteType,
-                    updatedAt = 0,
-                    createdAt = currentState.createdAt,
-                    pinTimestamp = currentState.pinTimestamp,
-                    tags = emptyList(),
-                    isFavorite = currentState.isFavorite, // Lưu trạng thái yêu thích
-                    folderId = currentState.folderId,
-                )
+            val now = System.currentTimeMillis()
+            val createdAt = currentState.createdAt.takeIf { it != 0L } ?: now
+            val note = Note(
+                id = currentState.noteId ?: "",
+                title = currentState.title,
+                content = currentState.content,
+                noteType = currentState.noteType,
+                updatedAt = now,
+                createdAt = createdAt,
+                pinTimestamp = currentState.pinTimestamp,
+                tags = emptyList(),
+                isFavorite = currentState.isFavorite,
+                folderId = currentState.folderId,
+                // Audio metadata
+                filePath = currentState.audioFilePath,
+                durationMs = currentState.audioDurationMs,
             )
+            saveNoteUseCase(note)
             _state.update { it.copy(isSaved = true) }
         }
     }

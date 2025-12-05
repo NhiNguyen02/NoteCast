@@ -3,6 +3,7 @@ package com.example.notecast.data.vad.silero
 import android.content.Context
 import ai.onnxruntime.*
 import com.example.notecast.domain.vad.VADDetector
+import com.example.notecast.utils.copyAssetToFile
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.collections.getOrNull
@@ -44,7 +45,12 @@ class SileroVADOnnx(
 
     init {
         // Copy model from assets to a file (onnxruntime needs file path)
-        val modelFile = copyModelToFile(context, "models/silero_vad.onnx")
+        // Copy model from assets to a file (onnxruntime needs file path)
+        val modelFile = copyAssetToFile(
+            context,
+            "silero_vad.onnx",      // asset path, nếu bạn đặt trong root assets
+            "silero_vad.onnx"       // tên file lưu ra, có thể giữ nguyên
+        )
         val opts = OrtSession.SessionOptions()
         // enable CPU execution provider (default)
         session = env.createSession(modelFile.absolutePath, opts)
@@ -99,17 +105,6 @@ class SileroVADOnnx(
 
         // Trả về true nếu speech liên tục đủ lâu
         return speechCounter >= minSpeechFrames
-    }
-
-    private fun copyModelToFile(context: Context, assetPath: String): File {
-        val f = File(context.cacheDir, "silero_vad.onnx")
-        if (f.exists()) return f
-        context.assets.open(assetPath).use { input ->
-            FileOutputStream(f).use { out ->
-                input.copyTo(out)
-            }
-        }
-        return f
     }
 
     fun close() {
