@@ -1,113 +1,156 @@
 package com.example.notecast.presentation.viewmodel
 
-import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.notecast.domain.model.Note
-import com.example.notecast.domain.repository.RecorderRepository
-import com.example.notecast.domain.usecase.*
-import com.example.notecast.presentation.ui.record.RecordingState
+import com.example.notecast.domain.usecase.PauseRecordingUseCase
+import com.example.notecast.domain.usecase.ResumeRecordingUseCase
+import com.example.notecast.domain.usecase.StartRecordingUseCase
+import com.example.notecast.domain.usecase.StopRecordingUseCase
+import com.example.notecast.domain.usecase.StreamAudioUseCase
+import com.example.notecast.domain.usecase.VadSegmenterUseCase
+import com.example.notecast.domain.vad.SegmentEvent
+import com.example.notecast.domain.vad.VadState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
-import java.util.UUID
 import javax.inject.Inject
+
+enum class RecorderState {
+    Idle,
+    Recording,
+    Paused,
+}
 
 @HiltViewModel
 class AudioViewModel @Inject constructor(
-    private val audioRepository: RecorderRepository,
     private val startRecordingUseCase: StartRecordingUseCase,
     private val stopRecordingUseCase: StopRecordingUseCase,
     private val pauseRecordingUseCase: PauseRecordingUseCase,
     private val resumeRecordingUseCase: ResumeRecordingUseCase,
-    private val getRecordingStateUseCase: GetRecordingStateUseCase,
-    private val trimAndExportWavUseCase: TrimAndExportWavUseCase,
-    private val transcribeAudioUseCase: TranscribeAudioUseCase,
-    private val saveNoteUseCase: SaveNoteUseCase,
-    private val application: Application
+    private val streamAudioUseCase: StreamAudioUseCase,
+    private val vadSegmenterUseCase: VadSegmenterUseCase,
 ) : ViewModel() {
 
-    val recordingState: StateFlow<RecordingState> = getRecordingStateUseCase().stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = RecordingState.Idle
-    )
+    private val _recorderState = MutableStateFlow(RecorderState.Idle)
+    val recorderState: StateFlow<RecorderState> = _recorderState.asStateFlow()
 
-    val amplitude = audioRepository.amplitude
-    val vadState = audioRepository.vadState
-    val waveform = audioRepository.waveform
-    val bufferAvailableSamples = audioRepository.bufferAvailableSamples
+    private val _amplitude = MutableStateFlow(0f)
+    val amplitude: StateFlow<Float> = _amplitude.asStateFlow()
 
-    private val _processing = MutableStateFlow(false)
-    val processing: StateFlow<Boolean> = _processing
+    private val _vadState = MutableStateFlow<VadState>(VadState.SILENT)
+    val vadState: StateFlow<VadState> = _vadState.asStateFlow()
 
-    private val _processingPercent = MutableStateFlow(0)
-    val processingPercent: StateFlow<Int> = _processingPercent
+    private val _recordingDurationMillis = MutableStateFlow(0L)
+    val recordingDurationMillis: StateFlow<Long> = _recordingDurationMillis.asStateFlow()
 
-    fun startRecording() = startRecordingUseCase()
-    fun pauseRecording() = pauseRecordingUseCase()
-    fun resumeRecording() = resumeRecordingUseCase()
-    fun stopRecording() = stopRecordingUseCase()
+    private val _waveform = MutableStateFlow<List<Float>>(emptyList())
+    val waveform: StateFlow<List<Float>> = _waveform.asStateFlow()
+
+    // Flow phát SegmentEvent ra ngoài cho ASRViewModel/domain nếu cần
+    private val _segmentEvents = MutableStateFlow<SegmentEvent>(SegmentEvent.None)
+    val segmentEvents: StateFlow<SegmentEvent> = _segmentEvents.asStateFlow()
+
+    private var audioStreamJob: Job? = null
+    private var vadJob: Job? = null
+    private var timerJob: Job? = null
 
     /**
-     * Xử lý lưu file và tạo Note
-     * @param folderId: ID của thư mục (nếu có)
-     * @param onResult: Callback trả về Note ID mới (hoặc null nếu lỗi)
+     * Tham chiếu tới ASRViewModel, được set từ UI (Compose) khi cần phối hợp.
+     * Tránh inject vòng tròn giữa hai ViewModel.
      */
-    fun processAndSave(
-        prePadding: Int = 1,
-        postPadding: Int = 1,
-        folderId: String? = null,
-        onResult: (String?) -> Unit // Trả về String (Note ID)
-    ) {
+    private var asrViewModel: ASRViewModel? = null
+
+    fun attachAsrViewModel(vm: ASRViewModel) {
+        asrViewModel = vm
+    }
+
+    fun startRecording() {
+        startRecordingUseCase()
+        _recorderState.value = RecorderState.Recording
+        _recordingDurationMillis.value = 0L
+        startAudioStreamCollection()
+        startVadSegmenterCollection()
+        startTimer()
+    }
+
+    fun pauseRecording() {
+        pauseRecordingUseCase()
+        _recorderState.value = RecorderState.Paused
+        timerJob?.cancel()
+    }
+
+    fun resumeRecording() {
+        resumeRecordingUseCase()
+        _recorderState.value = RecorderState.Recording
+        startTimer()
+    }
+
+    fun stopRecording() {
         viewModelScope.launch {
-            _processing.value = true
-            _processingPercent.value = 5
+            stopRecordingUseCase()
+            _recorderState.value = RecorderState.Idle
+            audioStreamJob?.cancel(); audioStreamJob = null
+            vadJob?.cancel(); vadJob = null
+            timerJob?.cancel(); timerJob = null
+            _recordingDurationMillis.value = 0L
 
-            val outDir = application.getExternalFilesDir(null) ?: File(application.filesDir, "records")
-            _processingPercent.value = 10
-            // Xuất file WAV
-            val result = trimAndExportWavUseCase(prePadding, postPadding, outDir)
-            _processingPercent.value = 30
+            // Khi dừng ghi âm, kết thúc phiên ASR hiện tại nếu có.
+            asrViewModel?.finishSession()
+        }
+    }
 
+    private fun startAudioStreamCollection() {
+        if (audioStreamJob?.isActive == true) return
+        audioStreamJob = viewModelScope.launch {
+            streamAudioUseCase().collect { frame ->
+                var max = 0f
+                for (v in frame) {
+                    val a = kotlin.math.abs(v)
+                    if (a > max) max = a
+                }
+                _amplitude.value = max
 
+                _waveform.update { old ->
+                    val newValue = max.coerceIn(0f, 1f)
+                    val list = if (old.size >= 64) old.drop(old.size - 63) else old
+                    list + newValue
+                }
+            }
+        }
+    }
 
+    private fun startVadSegmenterCollection() {
+        if (vadJob?.isActive == true) return
+        vadJob = viewModelScope.launch {
+            vadSegmenterUseCase().collect { event ->
+                _segmentEvents.value = event
+                when (event) {
+                    is SegmentEvent.Start,
+                    is SegmentEvent.Continue -> {
+                        _vadState.value = VadState.SPEAKING
+                    }
+                    is SegmentEvent.End -> {
+                        _vadState.value = VadState.SILENT
+                        // Đẩy chunk sang ASRViewModel để xử lý ASR.
+                        asrViewModel?.submitSegment(event.chunk)
+                    }
+                    SegmentEvent.None -> Unit
+                }
+            }
+        }
+    }
 
-            if (result.file != null) {
-                val transcriptText = transcribeAudioUseCase(result.file)
-                _processingPercent.value = 90
-                // Tạo Note mới
-                val newNoteId = UUID.randomUUID().toString()
-                val newNote = Note(
-                    id = newNoteId,
-                    title = "Ghi âm ${System.currentTimeMillis()}", // Tạm thời
-                    noteType = "VOICE",
-                    filePath = result.file.absolutePath, // Lưu đường dẫn file
-                    durationMs = result.recordedMs,
-                    rawText = transcriptText, // Placeholder cho STT
-                    updatedAt = System.currentTimeMillis(),
-                    createdAt = 0,
-                    folderId = folderId,
-                    content = transcriptText
-                )
-
-                // 3. Lưu vào Database
-                saveNoteUseCase(newNote)
-
-                _processingPercent.value = 100
-                delay(500)
-                _processing.value = false
-
-                // 4. Trả về ID để điều hướng
-                onResult(newNoteId)
-            } else {
-                _processing.value = false
-                onResult(null) // Lỗi
+    private fun startTimer() {
+        if (timerJob?.isActive == true) return
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000L)
+                _recordingDurationMillis.value = _recordingDurationMillis.value + 1000L
             }
         }
     }

@@ -31,6 +31,7 @@ import com.example.notecast.presentation.ui.homescreen.HomeScreen
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.ui.record.RecordingScreen
 import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
+import com.example.notecast.presentation.ui.debug.TokenizerDebugScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -90,7 +91,8 @@ fun MainAppScreen() {
                         onOpenCreateDialog = { showCreateDialog = true },
                         onNoteClick = { noteId ->
                             appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
-                        }
+                        },
+                        navController = appNavController
                     )
                 }
 
@@ -132,6 +134,12 @@ fun MainAppScreen() {
                         }
                     )
                 }
+
+                // 6. Tokenizer Debug (truy cập từ HomeScreen)
+                composable(Screen.TokenizerDebug.route) {
+                    TokenizerDebugScreen()
+                }
+
 
                 // Placeholder
                 composable(Screen.Notifications.route) { PlaceholderScreen("Thông báo") }

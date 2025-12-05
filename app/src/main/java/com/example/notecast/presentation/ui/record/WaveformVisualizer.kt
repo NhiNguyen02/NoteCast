@@ -8,22 +8,46 @@ import androidx.compose.ui.graphics.Color
 import com.example.notecast.domain.vad.VadState
 
 @Composable
-fun WaveformVisualizer(waveform: List<Float>, vad: VadState, modifier: Modifier = Modifier) {
+fun WaveformVisualizer(
+    waveform: List<Float>,
+    vad: VadState,
+    amplitude: Float,
+    modifier: Modifier = Modifier,
+) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
         val centerY = h / 2f
         val count = waveform.size.takeIf { it > 0 } ?: 1
         val stepX = w / count.toFloat()
+
+        // Nền xanh nhạt khi VAD phát hiện đang nói
         if (vad == VadState.SPEAKING) {
             drawRect(color = Color(0x2233FF33))
         }
+
+        // Level tức thời từ amplitude, clamp 0..1
+        val level = amplitude.coerceIn(0f, 1f)
+
         for (i in waveform.indices) {
             val x = i * stepX
             val norm = waveform[i].coerceIn(0f, 1f)
             val lineHeight = norm * h * 0.9f
+
+            // Cột cuối cùng là mẫu mới nhất
+            val isLatest = i == waveform.lastIndex
+
+            // Màu cơ bản: trắng, nhưng tăng alpha theo level khi đang nói
+            val baseAlpha = if (isLatest) 0.5f + 0.5f * level else 0.3f + 0.4f * norm
+            val color = if (vad == VadState.SPEAKING && level > 0.05f) {
+                // Khi có tiếng nói rõ ràng: dùng xanh lá nhạt, đậm hơn ở cột cuối
+                if (isLatest) Color(0xFF33FF66) else Color(0xAA33FF66)
+            } else {
+                Color.White.copy(alpha = baseAlpha.coerceIn(0.1f, 1f))
+            }
+
             drawLine(
-                color = Color.White,
+                color = color,
                 start = Offset(x, centerY - lineHeight / 2f),
                 end = Offset(x, centerY + lineHeight / 2f),
                 strokeWidth = stepX.coerceAtLeast(1f)

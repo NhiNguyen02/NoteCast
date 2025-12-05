@@ -50,6 +50,8 @@ import com.example.notecast.presentation.ui.dialog.SelectFolderDialog
 import com.example.notecast.presentation.viewmodel.NoteListViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.navigation.NavController
+import com.example.notecast.presentation.navigation.Screen
 
 /**
  * HomeScreen: nhẹ, không quản lý dialog. Khi user nhấn FAB, HomeScreen gọi onOpenCreateDialog()
@@ -59,6 +61,7 @@ fun HomeScreen(
     drawerState: DrawerState,
     onOpenCreateDialog: () -> Unit,
     onNoteClick: (String) -> Unit,
+    navController: NavController,
     // ViewModel được inject tự động tại đây
     viewModel: NoteListViewModel = hiltViewModel()
 ) {
@@ -132,6 +135,11 @@ fun HomeScreen(
             onCloseSelectionMode = {
                 isSelectionMode = false
                 selectedNoteIds.clear()
+            },
+
+            // Xử lý mở màn hình TokenizerDebug
+            onOpenTokenizerDebug = {
+                navController.navigate(Screen.TokenizerDebug.route)
             }
         )
 
@@ -190,7 +198,8 @@ private fun HomeScreenContent(
     onSelectAllClick: () -> Unit,
     onDeleteSelected: () -> Unit,
     onMoveSelected: () -> Unit,
-    onCloseSelectionMode: () -> Unit
+    onCloseSelectionMode: () -> Unit,
+    onOpenTokenizerDebug: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val search = ""
@@ -201,17 +210,33 @@ private fun HomeScreenContent(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             if (!isSelectionMode) {
-                Box(
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .size(56.dp)
-                        .shadow(elevation = 6.dp, shape = CircleShape)
-                        .clip(CircleShape)
-                        .background(brush = MainButtonBrush)
-                        .clickable { onOpenCreateDialog() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
+                Column {
+                    // New debug button on top
+                    Box(
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .size(56.dp)
+                            .shadow(elevation = 6.dp, shape = CircleShape)
+                            .clip(CircleShape)
+                            .background(Color.Gray)
+                            .clickable { onOpenTokenizerDebug() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(text = "Test\nTok", color = Color.White, fontSize = 10.sp)
+                    }
+                    // Existing FAB below
+                    Box(
+                        modifier = Modifier
+                            .navigationBarsPadding()
+                            .size(56.dp)
+                            .shadow(elevation = 6.dp, shape = CircleShape)
+                            .clip(CircleShape)
+                            .background(brush = MainButtonBrush)
+                            .clickable { onOpenCreateDialog() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
+                    }
                 }
             }
         },
@@ -472,25 +497,3 @@ fun HomeTopAppBar(
         )
     )
 }
-
-//@Preview()
-//@Composable
-//fun PreviewHomeScreen() {
-//    val previewDrawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-//    val notes = listOf<Note>()
-//    val previewState = NoteListState(
-//        isLoading = false,
-//        allNotes = notes,
-//        filteredAndSortedNotes = notes
-//    )
-//
-//    HomeScreenContent(
-//        drawerState = previewDrawerState,
-//        state = previewState,
-//        onEvent = {},
-//        onFilterClick = {},
-//        onSortClick = {},
-//        onOpenCreateDialog = {},
-//        onNoteClick = {}
-//    )
-//}
