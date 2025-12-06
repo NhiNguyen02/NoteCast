@@ -28,11 +28,17 @@ class AudioEngine @Inject constructor(
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private var recordingJob: Job? = null
+    private var currentCallback: ((ShortArray) -> Unit)? = null
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     @Synchronized
     fun start(onPcmFrame: ((ShortArray) -> Unit)? = null) {
         if (recordingJob?.isActive == true) return
+
+        // Lưu callback để dùng lại khi resume
+        if (onPcmFrame != null) {
+            currentCallback = onPcmFrame
+        }
 
         // đảm bảo buffer rỗng trước khi bắt đầu session mới
         // (tuỳ strategy, có thể bỏ nếu muốn giữ preroll)
@@ -51,7 +57,7 @@ class AudioEngine @Inject constructor(
                 recorderBuffer.write(copy)
 
                 // publish ra ngoài nếu có callback
-                onPcmFrame?.invoke(copy)
+                currentCallback?.invoke(copy)
             }
         }
     }
@@ -66,15 +72,32 @@ class AudioEngine @Inject constructor(
         if (vadBuffer is ClearableBuffer) vadBuffer.clear()
         if (asrBuffer is ClearableBuffer) asrBuffer.clear()
         if (recorderBuffer is ClearableBuffer) recorderBuffer.clear()
+
+        // Clear callback khi stop hoàn toàn
+        currentCallback = null
     }
 
     fun pause() {
         recorder.stop()
+        // Cancel recording job nhưng giữ callback để resume sau
+        recordingJob?.cancel()
+        recordingJob = null
     }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun resume() {
-        // Resume = start lại, để ViewModel quyết định semantic
-        start()
+        // Resume = start lại với callback đã lưu, KHÔNG clear buffers
+        // để tiếp tục nối audio vào recording hiện tại
+        if (recordingJob?.isActive == true) return
+
+        recordingJob = scope.launch {
+            recorder.start { frame ->
+                val copy = frame.copyOf()
+                vadBuffer.write(copy)
+                asrBuffer.write(copy)
+                recorderBuffer.write(copy)
+                currentCallback?.invoke(copy)
+            }
+        }
     }
 }

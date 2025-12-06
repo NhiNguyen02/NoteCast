@@ -206,9 +206,9 @@ fun ProcessingDialog(
                     }
 
                     // Dismiss button
-                    TextButton(onClick = onDismissRequest) {
-                        Text(text = "Đóng", color = Color.White)
-                    }
+//                    TextButton(onClick = onDismissRequest) {
+//                        Text(text = "Đóng", color = Color.White)
+//                    }
                 }
             }
         }

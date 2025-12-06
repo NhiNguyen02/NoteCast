@@ -82,12 +82,21 @@ class AudioViewModel @Inject constructor(
     fun pauseRecording() {
         pauseRecordingUseCase()
         _recorderState.value = RecorderState.Paused
+        // Cancel các job collection nhưng không clear state
+        audioStreamJob?.cancel()
+        audioStreamJob = null
+        vadJob?.cancel()
+        vadJob = null
         timerJob?.cancel()
+        timerJob = null
     }
 
     fun resumeRecording() {
         resumeRecordingUseCase()
         _recorderState.value = RecorderState.Recording
+        // Restart tất cả các collection job để tiếp tục nhận data
+        startAudioStreamCollection()
+        startVadSegmenterCollection()
         startTimer()
     }
 

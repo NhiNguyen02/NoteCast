@@ -1,41 +1,47 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.example.notecast.presentation.ui.record
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.widget.Toast
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.theme.PrimaryAccent
+import com.example.notecast.presentation.theme.Red
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.viewmodel.ASRState
 import com.example.notecast.presentation.viewmodel.ASRViewModel
@@ -52,13 +58,14 @@ private const val TAG_RECORDING = "RecordingScreen"
 fun RecordingScreen(
     viewModel: AudioViewModel = hiltViewModel(),
     onClose: () -> Unit = {},
+    // Giữ callback cũ để trả transcript + info, nhưng UI mới chủ yếu quan tâm lưu note
     onRecordingFinished: (transcript: String, audioFilePath: String?, durationMs: Long, sampleRate: Int, channels: Int) -> Unit = { _, _, _, _, _ -> },
 ) {
     Log.d(TAG_RECORDING, "Composable entered")
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // observe state from ViewModel
+    // observe state from ViewModel (giữ nguyên logic cũ)
     val recorderState by viewModel.recorderState.collectAsState()
     val durationMillis by viewModel.recordingDurationMillis.collectAsState()
     val waveform by viewModel.waveform.collectAsState()
@@ -68,11 +75,10 @@ fun RecordingScreen(
     val asrVm: ASRViewModel = hiltViewModel()
     val asrState by asrVm.state.collectAsState()
 
-    // Local UI state điều khiển hiển thị ProcessingDialog
     val showProcessing = remember { mutableStateOf(false) }
     val latestOnRecordingFinished by rememberUpdatedState(onRecordingFinished)
 
-    // Trạng thái init ASR/ONNX lần đầu khi bấm mic
+    // use var with delegation so we can reassign within lambdas and LaunchedEffect
     var isAsrInitialized by remember { mutableStateOf(false) }
     var isInitializingAsr by remember { mutableStateOf(false) }
 
@@ -104,7 +110,6 @@ fun RecordingScreen(
 //                Toast.makeText(context, state.msg, Toast.LENGTH_SHORT).show()
 //            }
 //            else -> Unit
-//        }
 //}
     LaunchedEffect(asrState) {
         Log.d(TAG_RECORDING, "ASR state changed: $asrState")
@@ -126,7 +131,6 @@ fun RecordingScreen(
                 asrVm.resetSession()
             }
             is ASRState.Error -> {
-                // Tạm thời không show lỗi ASR ra UI
                 Log.e(TAG_RECORDING, "ASR Error (suppressed to UI): ${state.msg}")
                 showProcessing.value = false
             }
@@ -144,7 +148,6 @@ fun RecordingScreen(
             Toast.LENGTH_SHORT
         ).show()
         if (isGranted) {
-            // Người dùng vừa chấp nhận quyền → tắt bất kỳ dialog chờ nào.
             if (showProcessing.value || isInitializingAsr) {
                 showProcessing.value = false
                 isInitializingAsr = false
@@ -152,7 +155,6 @@ fun RecordingScreen(
             Log.d(TAG_RECORDING, "startRecording after permission grant")
             viewModel.startRecording()
         } else {
-            // Quyền bị từ chối, không nên giữ dialog processing.
             showProcessing.value = false
             isInitializingAsr = false
         }
@@ -165,7 +167,6 @@ fun RecordingScreen(
         ) == PackageManager.PERMISSION_GRANTED
         Log.d(TAG_RECORDING, "startWithPermission hasPermission=$hasPermission")
 
-        // Chỉ hiển thị dialog init ASR lần đầu TRƯỚC khi bắt đầu ghi.
         if (!isAsrInitialized) {
             isInitializingAsr = true
             showProcessing.value = true
@@ -175,7 +176,6 @@ fun RecordingScreen(
             if (!isAsrInitialized) {
                 coroutineScope.launch {
                     Log.d(TAG_RECORDING, "First-time ASR init: waiting briefly before startRecording")
-                    // Delay nhỏ để ASR/ONNX có thời gian init; không nên quá dài để tránh cảm giác treo app.
                     delay(500)
                     isAsrInitialized = true
                     isInitializingAsr = false
@@ -192,17 +192,34 @@ fun RecordingScreen(
         }
     }
 
+    // --------- UI state mới theo thiết kế cập nhật ---------
+    var showMenu by remember { mutableStateOf(false) }
+    var showExitConfirm by remember { mutableStateOf(false) }
+
+    // VAD label thân thiện
+//    val vadLabel = when (vadState) {
+//        VadState.SILENT -> "Không có tiếng"
+//        VadState.SPEAKING -> "Có tiếng"
+//        else -> vadState.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
+//    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(brush = Background)
-            .padding(16.dp)
+//            .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { },
+                title = { /* compact title, để trống cho tối giản */ },
                 navigationIcon = {
-                    IconButton(onClick = onClose) {
+                    IconButton(onClick = {
+                        if (recorderState == RecorderState.Recording || recorderState == RecorderState.Paused) {
+                            showExitConfirm = true
+                        } else {
+                            onClose()
+                        }
+                    }) {
                         Icon(
                             Icons.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -211,132 +228,342 @@ fun RecordingScreen(
                         )
                     }
                 },
+                actions = {
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.padding(end = 6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AddBox,
+                                contentDescription = "Thêm",
+                                tint = PrimaryAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            offset = DpOffset(x = (-8).dp, y = 8.dp)
+                        ) {
+                            // Hiện tại chỉ là placeholder UI, chưa gắn logic thư mục
+                            DropdownMenuItem(
+                                text = { Text("Công việc") },
+                                onClick = { showMenu = false }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Cá nhân") },
+                                onClick = { showMenu = false }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Ý tưởng") },
+                                onClick = { showMenu = false }
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // Timer + trạng thái
             Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = when (recorderState) {
-                        RecorderState.Recording -> "Đang ghi âm"
-                        RecorderState.Paused -> "Tạm dừng ghi âm"
-                        RecorderState.Idle -> "Ghi âm"
-                    },
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White
+                    text = formatElapsed(durationMillis),
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Timer hiển thị khi không Idle
-                if (recorderState != RecorderState.Idle) {
-                    Text(
-                        text = formatElapsed(durationMillis),
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                } else {
-                    Text(
-                        text = "Nhấn nút micro để bắt đầu ghi âm.",
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
+                Spacer(modifier = Modifier.height(6.dp))
+                when (recorderState) {
+                    RecorderState.Recording -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Đang ghi âm...",
+                                color = Red,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Red)
+                            )
+                        }
+                    }
+                    RecorderState.Paused -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Tạm dừng",
+                                color = Red,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Red.copy(alpha = 0.6f))
+                            )
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = "Nhấn nút ghi âm để bắt đầu thu âm",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 13.sp
+                        )
+                    }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Waveform card với overlay info
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PrimaryAccent.copy(alpha = 0.08f))
+            ) {
+                WaveformVisualizer(
+                    waveform = waveform,
+                    vad = vadState,
+                    amplitude = amplitude,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+//                Column(
+//                    modifier = Modifier
+//                        .align(Alignment.TopStart)
+//                        .padding(8.dp)
+//                ) {
+//                    Text(
+//                        text = "Biên độ: ${"%.2f".format(amplitude)}",
+//                        color = Color.White,
+//                        fontSize = 12.sp
+//                    )
+//                    Text(
+//                        text = "VAD: $vadLabel",
+//                        color = Color.White,
+//                        fontSize = 12.sp
+//                    )
+//                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Waveform visualizer khu vực giữa
-            WaveformVisualizer(
-                waveform = waveform,
-                vad = vadState,
-                amplitude = amplitude,
+            // Bottom controls (fab + hint)
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
-                    .padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(bottom = 36.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                IconButton(
-                    onClick = {
-                        when (recorderState) {
-                            RecorderState.Idle -> {
-                                Log.d(TAG_RECORDING, "Record button: Idle -> startWithPermission")
-                                startWithPermission()
+                val idleOuterSize = 80.dp
+                val idleInnerSize = 56.dp
+                val actionOuterSize = 64.dp
+                val actionIconSize = 22.dp
+                val actionGap = 12.dp
+
+                when (recorderState) {
+                    RecorderState.Idle -> {
+                        val infiniteTransition = rememberInfiniteTransition(label = "idle-pulse")
+                        val scale by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = 1.06f,
+                            animationSpec = infiniteRepeatable(
+                                animation = keyframes {
+                                    this.durationMillis = 900
+                                    1.06f at 450 using FastOutSlowInEasing
+                                },
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "idle-scale"
+                        )
+
+                        FloatingActionButton(
+                            onClick = { startWithPermission() },
+                            modifier = Modifier
+                                .size(idleOuterSize)
+                                .scale(scale)
+                                .shadow(12.dp, CircleShape),
+                            containerColor = Color(0xFFF04C4C),
+                            shape = CircleShape,
+                            elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(idleInnerSize)
+                                    .background(Color.White, CircleShape)
+                            )
+                        }
+                    }
+                    RecorderState.Recording -> {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 56.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FloatingActionButton(
+                                onClick = { viewModel.pauseRecording() },
+                                modifier = Modifier
+                                    .size(actionOuterSize)
+                                    .shadow(8.dp, CircleShape),
+                                containerColor = Red,
+                                shape = CircleShape,
+                                elevation = FloatingActionButtonDefaults.elevation(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Pause,
+                                    contentDescription = "Pause",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(actionIconSize)
+                                )
                             }
-                            RecorderState.Recording -> {
-                                Log.d(TAG_RECORDING, "Record button: Recording -> pauseRecording")
-                                viewModel.pauseRecording()
-                            }
-                            RecorderState.Paused -> {
-                                Log.d(TAG_RECORDING, "Record button: Paused -> resumeRecording")
-                                viewModel.resumeRecording()
+                            Spacer(modifier = Modifier.width(actionGap))
+                            FloatingActionButton(
+                                onClick = {
+                                    Log.d(TAG_RECORDING, "Stop & process clicked, durationMs=$durationMillis")
+                                    viewModel.stopRecording()
+                                    showProcessing.value = true
+                                    asrVm.finishSession(
+                                        audioFilePath = "", // TODO: truyền path thực tế khi đã có
+                                        durationMs = durationMillis,
+                                        sampleRate = 16_000,
+                                        channels = 1,
+                                    )
+                                },
+                                modifier = Modifier
+                                    .size(actionOuterSize)
+                                    .shadow(8.dp, CircleShape),
+                                containerColor = Color.DarkGray,
+                                shape = CircleShape,
+                                elevation = FloatingActionButtonDefaults.elevation(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Stop,
+                                    contentDescription = "Stop",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(actionIconSize)
+                                )
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(
-                            when (recorderState) {
-                                RecorderState.Recording -> Color.Red
-                                RecorderState.Paused -> Color.Gray
-                                RecorderState.Idle -> Color.Red
+                    }
+                    RecorderState.Paused -> {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 56.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FloatingActionButton(
+                                onClick = { viewModel.resumeRecording() },
+                                modifier = Modifier
+                                    .size(actionOuterSize)
+                                    .shadow(8.dp, CircleShape),
+                                containerColor = Red,
+                                shape = CircleShape,
+                                elevation = FloatingActionButtonDefaults.elevation(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Resume",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(actionIconSize)
+                                )
                             }
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Record",
-                        tint = Color.White,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-
-                if (recorderState != RecorderState.Idle) {
-                    Spacer(modifier = Modifier.width(24.dp))
-                    Button(onClick = {
-                        Log.d(TAG_RECORDING, "Stop & process clicked, durationMs=$durationMillis")
-                        viewModel.stopRecording()
-                        // Chỉ lúc người dùng bấm Dừng & xử lý mới bật dialog xử lý
-                        showProcessing.value = true
-                        asrVm.finishSession(
-                            audioFilePath = "", // TODO: truyền path thực tế khi đã có
-                            durationMs = durationMillis,
-                            sampleRate = 16_000,
-                            channels = 1,
-                        )
-                    }) {
-                        Text("Dừng & xử lý")
+                            Spacer(modifier = Modifier.width(actionGap))
+                            FloatingActionButton(
+                                onClick = {
+                                    Log.d(TAG_RECORDING, "Stop & process clicked from Paused, durationMs=$durationMillis")
+                                    viewModel.stopRecording()
+                                    showProcessing.value = true
+                                    asrVm.finishSession(
+                                        audioFilePath = "", // TODO
+                                        durationMs = durationMillis,
+                                        sampleRate = 16_000,
+                                        channels = 1,
+                                    )
+                                },
+                                modifier = Modifier
+                                    .size(actionOuterSize)
+                                    .shadow(8.dp, CircleShape),
+                                containerColor = PrimaryAccent,
+                                shape = CircleShape,
+                                elevation = FloatingActionButtonDefaults.elevation(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(actionIconSize)
+                                )
+                            }
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = if (durationMillis > 0L) {
+                        "Bấm biểu tượng thêm (góc phải) để chọn thư mục lưu (UI stub)"
+                    } else {
+                        "Nhấn nút ghi âm để bắt đầu thu âm"
+                    },
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Overlay ProcessingDialog khi đang xử lý hoặc đang init ASR lần đầu.
-        // Đảm bảo onDismissRequest có thể tắt dialog trong trường hợp lỗi bất thường.
         if (showProcessing.value || isInitializingAsr) {
             ProcessingDialog(
                 percent = 50,
                 step = 1,
                 details = if (isInitializingAsr) "Đang chuẩn bị mô hình nhận diện giọng nói..." else "Đang chuyển giọng nói thành văn bản...",
                 onDismissRequest = {
-                    // Cho phép tắt dialog thủ công để tránh bị kẹt nếu ASR mất quá lâu
                     showProcessing.value = false
                     isInitializingAsr = false
+                }
+            )
+        }
+
+        if (showExitConfirm) {
+            AlertDialog(
+                onDismissRequest = { showExitConfirm = false },
+                title = { Text("Dừng ghi âm?") },
+                text = { Text("Bạn đang ghi âm, thoát ra sẽ mất đoạn ghi hiện tại.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.stopRecording()
+                        showExitConfirm = false
+                        onClose()
+                    }) {
+                        Text("Thoát")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showExitConfirm = false }) {
+                        Text("Hủy")
+                    }
                 }
             )
         }
