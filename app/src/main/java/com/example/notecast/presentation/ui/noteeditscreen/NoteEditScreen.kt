@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIos
 import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.Pageview
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +25,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,12 +35,12 @@ import com.example.notecast.presentation.navigation.Screen
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
+import com.example.notecast.presentation.ui.dialog.ProcessingDialog
+import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.viewmodel.NoteEditViewModel
+import com.example.notecast.utils.formatNoteDate
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Màn hình Sửa/Tạo Ghi chú (Đã kết nối ViewModel thật)
@@ -56,7 +56,7 @@ fun NoteEditScreen(
             val rawInitial = args.getString(Screen.NoteEdit.initialContentArg) ?: ""
             val decodedInitial = try {
                 URLDecoder.decode(rawInitial, StandardCharsets.UTF_8.toString())
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 rawInitial
             }
             if (decodedInitial.isNotBlank()) {
@@ -67,7 +67,7 @@ fun NoteEditScreen(
 
     // 1. Lấy State từ ViewModel
     val state by viewModel.state.collectAsState()
-    var showFolderDialog by remember { mutableStateOf(false) }
+//    var showFolderDialog by remember { mutableStateOf(false) }
 
     // 2. Logic tự động quay lại khi lưu xong
     LaunchedEffect(state.isSaved) {
@@ -105,6 +105,7 @@ fun NoteEditScreen(
                     folderName = state.folderName, // "Chưa phân loại" hoặc Tên folder
                     isProcessing = state.isSummarizing,
                     availableFolders = state.availableFolders,
+                    hasMindMap = state.mindMapData != null,
                     onFolderSelected = { folder ->
                         viewModel.onEvent(NoteEditEvent.OnFolderSelected(folder))
                     },
@@ -190,6 +191,24 @@ fun NoteEditScreen(
             }
         }
     }
+    if (state.showMindMapDialog && state.mindMapData != null) {
+        MindMapDialog(
+            rootNode = state.mindMapData!!,
+            onDismiss = { viewModel.onEvent(NoteEditEvent.OnCloseMindMap) }
+        )
+
+    }
+    if (state.isGeneratingMindMap) {
+        // Sử dụng ProcessingDialog bạn đã có
+        ProcessingDialog(
+            percent = state.processingPercent,
+            step = 1, // Hoặc số bước tùy logic của dialog bạn
+            onDismissRequest = {
+                // Tùy chọn: Có cho phép hủy khi đang tạo không?
+                // Nếu không, để trống hoặc không làm gì
+            }
+        )
+    }
 
 }
 
@@ -241,9 +260,10 @@ fun NoteInfoAndActions(
     availableFolders: List<Folder>,
     onSummarize: () -> Unit,
     onNormalize: () -> Unit,
+    hasMindMap: Boolean,
     onMindMap: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+//    var expanded by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -288,8 +308,12 @@ fun NoteInfoAndActions(
         }
         item {
             ActionChip(
-                label = "Mind map",
-                leadingIcon = painterResource(R.drawable.icon_park_mindmap_map), // Đảm bảo có icon
+                label = if (hasMindMap) "Xem Mindmap" else "Tạo Mindmap",
+                leadingIcon = if (hasMindMap)
+                    rememberVectorPainter(Icons.Outlined.Pageview)// Đảm bảo có icon
+                else
+                    painterResource(R.drawable.icon_park_mindmap_map), // Icon Map
+
                 onClick = onMindMap,
                 backgroundBrush = Brush.verticalGradient(
                     0.0f to Color(0xffC2D1EC),
@@ -350,29 +374,4 @@ fun ActionChip(
             }
         }
     }
-}
-
-// Hàm tiện ích định dạng ngày tháng
-fun formatNoteDate(timestamp: Long): String {
-    val date = Date(timestamp)
-    val todayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    val currentDay = todayFormatter.format(Date())
-    val noteDay = todayFormatter.format(date)
-
-    val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-
-    return if (currentDay == noteDay) {
-        "Hôm nay, ${timeFormatter.format(date)}"
-    } else {
-        "${noteDay}, ${timeFormatter.format(date)}"
-    }
-}
-
-
-// Preview: Bạn cần tạo một State giả để preview, không cần MockViewModel phức tạp
-@Preview(showBackground = true)
-@Composable
-fun PreviewNoteEditScreen() {
-    // Lưu ý: Preview sẽ khó hoạt động với HiltViewModel trừ khi bạn tách NoteEditScreenContent ra riêng (như HomeScreen)
-    // Để đơn giản, ta bỏ qua preview tích hợp ViewModel ở đây
 }

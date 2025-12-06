@@ -58,6 +58,8 @@ fun MainAppScreen() {
 
     // Trạng thái Dialog tạo ghi chú (Vẫn giữ ở đây vì nó điều hướng đi nơi khác)
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showFilterScreen by remember { mutableStateOf(false) }
+    var showSortScreen by remember { mutableStateOf(false) }
 
     // Tự động đóng Drawer khi chuyển màn hình
     LaunchedEffect(currentRoute) {
@@ -66,6 +68,16 @@ fun MainAppScreen() {
         }
     }
 
+    // If Filter/Sort/Dialogs are visible, close drawer and disable gestures so user can't open it underneath
+    LaunchedEffect(showFilterScreen, showSortScreen, showCreateDialog) {
+        if (showFilterScreen || showSortScreen || showCreateDialog) {
+            if (drawerState.isOpen) {
+                scope.launch { drawerState.close() }
+            }
+        }
+    }
+
+    // IMPORTANT: set gesturesEnabled = !showFilterScreen (and other overlays) so edge swipe/tap won't open drawer
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -129,12 +141,12 @@ fun MainAppScreen() {
                         }
                     )
                 }
-
-                // 4. Màn hình SETTINGS
+                composable(Screen.Notifications.route) { PlaceholderScreen(text = "Thông báo") }
                 composable(Screen.Settings.route) {
                     SettingsScreen(
-                        onBackClick = { appNavController.popBackStack() }
+                        onBackClick = {appNavController.popBackStack()}
                     )
+
                 }
 
                 // 5. Màn hình GHI ÂM
@@ -145,7 +157,8 @@ fun MainAppScreen() {
                             appNavController.popBackStack()
                             appNavController.navigate(
                                 Screen.NoteEdit.createRouteWithTranscript(
-                                    noteId = "new_voice",
+//                                    noteId = "new_voice",
+                                    title = "Ghi chú ghi âm",
                                     initialContent = transcript,
                                     audioPath = audioFilePath,
                                     durationMs = durationMs,

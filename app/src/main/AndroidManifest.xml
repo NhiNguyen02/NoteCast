@@ -4,7 +4,7 @@
 
     <!-- Quyền thu âm -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:name=".NoteApplication"
         android:allowBackup="true"

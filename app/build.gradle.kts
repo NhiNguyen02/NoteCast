@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -20,6 +22,18 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // 2. Đọc file local.properties
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.inputStream())
+        }
+
+        // 3. Lấy Key và tạo BuildConfigField
+        val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
+
+        // "String", "TÊN_BIẾN", "\"GIÁ_TRỊ\""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 
     buildTypes {
@@ -31,6 +45,8 @@ android {
             )
         }
     }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -41,6 +57,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -90,16 +107,16 @@ dependencies {
 
     // ONNX Runtime
     implementation ("com.microsoft.onnxruntime:onnxruntime-android:1.17.1")
-    // Room
-//    val roomVersion = "2.8.3"
-//    implementation("androidx.room:room-runtime:$roomVersion")
-//    ksp("androidx.room:room-compiler:$roomVersion")
-//    implementation("androidx.room:room-ktx:$roomVersion")
+
+    // Retrofit & OkHttp
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0") // Để xem log API
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    // Converter để Retrofit hiểu JSON của Kotlin Serialization
+    implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }
-
-//ksp {
-//        arg("room.schemaLocation", "$projectDir/schemas")
-//}
