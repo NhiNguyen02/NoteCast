@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIos
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Pageview
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +39,8 @@ import com.example.notecast.presentation.theme.PopUpBackgroundBrush
 import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
+import com.example.notecast.presentation.ui.dialog.ProcessingDialog
+import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.viewmodel.NoteEditViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -91,6 +94,7 @@ fun NoteEditScreen(
                     folderName = state.folderName, // "Chưa phân loại" hoặc Tên folder
                     isProcessing = state.isSummarizing,
                     availableFolders = state.availableFolders,
+                    hasMindMap = state.mindMapData != null,
                     onFolderSelected = { folder ->
                         viewModel.onEvent(NoteEditEvent.OnFolderSelected(folder))
                     },
@@ -175,6 +179,24 @@ fun NoteEditScreen(
             }
         }
     }
+    if (state.showMindMapDialog && state.mindMapData != null) {
+        MindMapDialog(
+            rootNode = state.mindMapData!!,
+            onDismiss = { viewModel.onEvent(NoteEditEvent.OnCloseMindMap) }
+        )
+
+    }
+    if (state.isGeneratingMindMap) {
+        // Sử dụng ProcessingDialog bạn đã có
+        ProcessingDialog(
+            percent = state.processingPercent,
+            step = 1, // Hoặc số bước tùy logic của dialog bạn
+            onDismissRequest = {
+                // Tùy chọn: Có cho phép hủy khi đang tạo không?
+                // Nếu không, để trống hoặc không làm gì
+            }
+        )
+    }
 
 }
 
@@ -226,6 +248,7 @@ fun NoteInfoAndActions(
     availableFolders: List<Folder>,
     onSummarize: () -> Unit,
     onNormalize: () -> Unit,
+    hasMindMap: Boolean,
     onMindMap: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -273,8 +296,12 @@ fun NoteInfoAndActions(
         }
         item {
             ActionChip(
-                label = "Mind map",
-                leadingIcon = painterResource(R.drawable.icon_park_mindmap_map), // Đảm bảo có icon
+                label = if (hasMindMap) "Xem Mindmap" else "Tạo Mindmap",
+                leadingIcon = if (hasMindMap)
+                    rememberVectorPainter(Icons.Outlined.Pageview)// Đảm bảo có icon
+                else
+                    painterResource(R.drawable.icon_park_mindmap_map), // Icon Map
+
                 onClick = onMindMap,
                 backgroundBrush = Brush.verticalGradient(
                     0.0f to Color(0xffC2D1EC),

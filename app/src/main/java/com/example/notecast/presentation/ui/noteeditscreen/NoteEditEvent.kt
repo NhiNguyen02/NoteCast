@@ -20,4 +20,5 @@ sealed interface NoteEditEvent {
     object OnSummarize : NoteEditEvent
     object OnNormalize : NoteEditEvent
     object OnGenerateMindMap : NoteEditEvent
+    object OnCloseMindMap: NoteEditEvent
 }

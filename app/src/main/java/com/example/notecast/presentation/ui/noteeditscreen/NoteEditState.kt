@@ -26,6 +26,9 @@ data class NoteEditState(
     val isNormalizing: Boolean = false,
     val isGeneratingMindMap: Boolean = false,
 
+    val mindMapData: com.example.notecast.domain.model.MindMapNode? = null, // Thêm trường này
+    val showMindMapDialog: Boolean = false,
+    val processingPercent: Int = 0,
     // Điều hướng
     val isSaved: Boolean = false,
     val error: String? = null
