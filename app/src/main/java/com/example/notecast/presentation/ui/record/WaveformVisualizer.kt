@@ -20,8 +20,6 @@ fun WaveformVisualizer(
         val centerY = h / 2f
         val count = waveform.size.takeIf { it > 0 } ?: 1
         val stepX = w / count.toFloat()
-
-        // Nền xanh nhạt khi VAD phát hiện đang nói
         if (vad == VadState.SPEAKING) {
             drawRect(color = Color(0x2233FF33))
         }

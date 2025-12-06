@@ -25,13 +25,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.domain.model.Folder
-import com.example.notecast.domain.model.Note
 import com.example.notecast.presentation.ui.dialog.CreateFolderDialog
 import com.example.notecast.presentation.ui.dialog.FolderColors
 import com.example.notecast.presentation.ui.dialog.SelectFolderDialog // <-- IMPORT DIALOG CHỌN
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.theme.TitleBrush
-import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.viewmodel.FolderViewModel
 import com.example.notecast.presentation.ui.common_components.NoteCard
 // Import NoteSelectionBar (nếu bạn để ở homescreen package)

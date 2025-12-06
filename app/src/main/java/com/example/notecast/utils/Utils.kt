@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /** Timer helper **/
@@ -30,4 +33,20 @@ fun copyAssetToFile(context: Context, assetPath: String, outFileName: String): F
     }
 
     return outFile
+}
+
+// Hàm tiện ích định dạng ngày tháng
+fun formatNoteDate(timestamp: Long): String {
+    val date = Date(timestamp)
+    val todayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val currentDay = todayFormatter.format(Date())
+    val noteDay = todayFormatter.format(date)
+
+    val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+    return if (currentDay == noteDay) {
+        "Hôm nay, ${timeFormatter.format(date)}"
+    } else {
+        "${noteDay}, ${timeFormatter.format(date)}"
+    }
 }
