@@ -136,7 +136,7 @@ fun NoteEditScreen(
 
                     // Ngày giờ (Tạm thời lấy giờ hiện tại hoặc từ state nếu có)
                     Text(
-                        text = formatNoteDate(System.currentTimeMillis()),
+                        text = formatNoteDate(state.updatedAt),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray,
                         modifier = Modifier.padding(bottom = 20.dp)
