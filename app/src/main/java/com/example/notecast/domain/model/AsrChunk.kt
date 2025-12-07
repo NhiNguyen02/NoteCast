@@ -5,7 +5,7 @@ package com.example.notecast.domain.model
 data class AsrChunk(
     val startSec: Double,
     val endSec: Double,
-//    val startSample: Long,
-//    val endSample: Long,
+    val startSample: Long,
+    val endSample: Long,
     val samples: FloatArray
 )

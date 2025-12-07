@@ -34,6 +34,7 @@ class AudioViewModel @Inject constructor(
     private val resumeRecordingUseCase: ResumeRecordingUseCase,
     private val streamAudioUseCase: StreamAudioUseCase,
     private val vadSegmenterUseCase: VadSegmenterUseCase,
+    private val audioRepository: com.example.notecast.domain.repository.AudioRepository,
 ) : ViewModel() {
 
     private val _recorderState = MutableStateFlow(RecorderState.Idle)
@@ -163,4 +164,11 @@ class AudioViewModel @Inject constructor(
             }
         }
     }
+
+    // Expose audio params to UI
+    val sampleRate: Int get() = audioRepository.sampleRate
+    val channels: Int get() = audioRepository.channels
+
+    // TODO: expose current recording file path when file saving is integrated
+    val currentRecordingFilePath: String? get() = null
 }

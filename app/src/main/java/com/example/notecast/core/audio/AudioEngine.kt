@@ -30,6 +30,10 @@ class AudioEngine @Inject constructor(
     private var recordingJob: Job? = null
     private var currentCallback: ((ShortArray) -> Unit)? = null
 
+    // Expose fixed config to downstream (ASR pipeline contract)
+    val sampleRate: Int get() = 16_000
+    val channels: Int get() = 1
+
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     @Synchronized
     fun start(onPcmFrame: ((ShortArray) -> Unit)? = null) {

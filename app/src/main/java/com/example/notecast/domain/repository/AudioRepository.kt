@@ -27,4 +27,8 @@ interface AudioRepository {
      * Dùng cho VAD/Segmenter/ASR pipeline.
      */
     fun streamPcmFrames(): Flow<ShortArray>
+
+    /** Audio params (fixed for ASR contract) */
+    val sampleRate: Int
+    val channels: Int
 }

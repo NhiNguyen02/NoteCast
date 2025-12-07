@@ -8,6 +8,12 @@ import androidx.annotation.RequiresPermission
 
 /**
  * Wrapper đơn giản quanh AudioRecord để tách Android API khỏi AudioEngine.
+ *
+ * IMPORTANT: This recorder is designed to ALWAYS run at 16 kHz, mono, PCM_16BIT.
+ * - sampleRate = 16_000 Hz
+ * - channelConfig = CHANNEL_IN_MONO
+ * - audioFormat = ENCODING_PCM_16BIT
+ * Changing these may break VAD/ASR pipeline expectations (MelProcessor, hopLength/winLength, etc.).
  */
 class AudioRecorder(
     private val sampleRate: Int = 16_000,
@@ -22,6 +28,11 @@ class AudioRecorder(
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun createAudioRecord(): AudioRecord {
+        // Defensive check: enforce 16kHz mono PCM_16BIT
+        require(sampleRate == 16_000) { "AudioRecorder must use 16 kHz sample rate (got $sampleRate)" }
+        require(channelConfig == AudioFormat.CHANNEL_IN_MONO) { "AudioRecorder must be mono input (got $channelConfig)" }
+        require(audioFormat == AudioFormat.ENCODING_PCM_16BIT) { "AudioRecorder must use PCM_16BIT (got $audioFormat)" }
+
         val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
         val bufferSizeInBytes = minBuffer.coerceAtLeast(sampleRate / 10 * 2) // ~100ms
 
@@ -73,5 +84,3 @@ class AudioRecorder(
         isRecording = false
     }
 }
-
-

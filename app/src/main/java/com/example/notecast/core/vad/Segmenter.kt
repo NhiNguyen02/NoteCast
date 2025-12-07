@@ -91,6 +91,8 @@ class Segmenter(
                 val asrChunk = AsrChunk(
                     startSec = startSec,
                     endSec = endSec,
+                    startSample = startSampleInclusive,
+                    endSample = endSampleExclusive,
                     samples = out,
                 )
                 return SegmentEvent.End(asrChunk)

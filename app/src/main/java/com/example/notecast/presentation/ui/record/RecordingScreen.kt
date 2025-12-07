@@ -89,14 +89,43 @@ fun RecordingScreen(
 
     // Khi ASR hoàn tất (Final) hoặc Error, ẩn dialog và điều hướng.
     // KHÔNG tự bật dialog khi chỉ có ASRState.Processing trong lúc vẫn đang ghi âm.
+    LaunchedEffect(asrState) {
+        Log.d(TAG_RECORDING, "ASR state changed: $asrState")
+        when (val state = asrState) {
+            is ASRState.Final -> {
+                Log.d(TAG_RECORDING, "ASR Final text length=${state.text.length}")
+                showProcessing.value = false
+                latestOnRecordingFinished(
+                    state.text,
+                    null,
+                    durationMillis,
+                    16_000,
+                    1,
+                )
+                asrVm.resetSession()
+            }
+
+            is ASRState.Error -> {
+                Log.e(TAG_RECORDING, "ASR Error: ${state.msg}")
+                showProcessing.value = false
+                Toast.makeText(context, state.msg, Toast.LENGTH_SHORT).show()
+            }
+
+            else -> Unit
+        }
+    }
 //    LaunchedEffect(asrState) {
 //        Log.d(TAG_RECORDING, "ASR state changed: $asrState")
 //        when (val state = asrState) {
 //            is ASRState.Final -> {
-//                Log.d(TAG_RECORDING, "ASR Final text length=${state.text.length}")
 //                showProcessing.value = false
+//
+//                val content = state.text.ifBlank {
+//                    "dạ thưa hội đồng em xin phép đi vào phần kết quả thực nghiệm của đề tài như thầy cô thấy trên biểu đồ mô hình đạt độ chính xác khoảng tám mươi tám phần trăm tuy nhiên khi test với dữ liệu bị nhiễu độ chính xác giảm xuống còn bảy mươi lăm phần trăm nguyên nhân chủ yếu là do bộ dữ liệu ban đầu chưa đa dạng giọng vùng miền em đã thử áp dụng kỹ thuật data augmentation để tăng cường dữ liệu kết quả sau cải thiện model đã nhận diện tốt hơn các từ đơn nhưng câu dài vẫn còn sai sót ứng dụng demo trên điện thoại chạy ổn định các tính năng cơ bản như đăng nhập còn phần xử lý thời gian thực vẫn còn độ trễ khoảng hai giây em sẽ tối ưu sau đó là toàn bộ kết quả của chương ba em xin cảm ơn thầy cô đã lắng nghe em xin mời quý thầy cô đặt câu hỏi phản biện ạ"
+//                }
+//
 //                latestOnRecordingFinished(
-//                    state.text,
+//                    content,
 //                    null,
 //                    durationMillis,
 //                    16_000,
@@ -105,38 +134,12 @@ fun RecordingScreen(
 //                asrVm.resetSession()
 //            }
 //            is ASRState.Error -> {
-//                Log.e(TAG_RECORDING, "ASR Error: ${state.msg}")
+//                Log.e(TAG_RECORDING, "ASR Error (suppressed to UI): ${state.msg}")
 //                showProcessing.value = false
-//                Toast.makeText(context, state.msg, Toast.LENGTH_SHORT).show()
 //            }
 //            else -> Unit
-//}
-    LaunchedEffect(asrState) {
-        Log.d(TAG_RECORDING, "ASR state changed: $asrState")
-        when (val state = asrState) {
-            is ASRState.Final -> {
-                showProcessing.value = false
-
-                val content = state.text.ifBlank {
-                    "dạ thưa hội đồng em xin phép đi vào phần kết quả thực nghiệm của đề tài như thầy cô thấy trên biểu đồ mô hình đạt độ chính xác khoảng tám mươi tám phần trăm tuy nhiên khi test với dữ liệu bị nhiễu độ chính xác giảm xuống còn bảy mươi lăm phần trăm nguyên nhân chủ yếu là do bộ dữ liệu ban đầu chưa đa dạng giọng vùng miền em đã thử áp dụng kỹ thuật data augmentation để tăng cường dữ liệu kết quả sau cải thiện model đã nhận diện tốt hơn các từ đơn nhưng câu dài vẫn còn sai sót ứng dụng demo trên điện thoại chạy ổn định các tính năng cơ bản như đăng nhập còn phần xử lý thời gian thực vẫn còn độ trễ khoảng hai giây em sẽ tối ưu sau đó là toàn bộ kết quả của chương ba em xin cảm ơn thầy cô đã lắng nghe em xin mời quý thầy cô đặt câu hỏi phản biện ạ"
-                }
-
-                latestOnRecordingFinished(
-                    content,
-                    null,
-                    durationMillis,
-                    16_000,
-                    1,
-                )
-                asrVm.resetSession()
-            }
-            is ASRState.Error -> {
-                Log.e(TAG_RECORDING, "ASR Error (suppressed to UI): ${state.msg}")
-                showProcessing.value = false
-            }
-            else -> Unit
-        }
-    }
+//        }
+//    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -440,10 +443,10 @@ fun RecordingScreen(
                                     viewModel.stopRecording()
                                     showProcessing.value = true
                                     asrVm.finishSession(
-                                        audioFilePath = "", // TODO: truyền path thực tế khi đã có
+                                        audioFilePath = viewModel.currentRecordingFilePath ?: "", // TODO: real path when available
                                         durationMs = durationMillis,
-                                        sampleRate = 16_000,
-                                        channels = 1,
+                                        sampleRate = viewModel.sampleRate,
+                                        channels = viewModel.channels,
                                     )
                                 },
                                 modifier = Modifier
@@ -493,10 +496,10 @@ fun RecordingScreen(
                                     viewModel.stopRecording()
                                     showProcessing.value = true
                                     asrVm.finishSession(
-                                        audioFilePath = "", // TODO
+                                        audioFilePath = viewModel.currentRecordingFilePath ?: "", // TODO
                                         durationMs = durationMillis,
-                                        sampleRate = 16_000,
-                                        channels = 1,
+                                        sampleRate = viewModel.sampleRate,
+                                        channels = viewModel.channels,
                                     )
                                 },
                                 modifier = Modifier

@@ -9,6 +9,8 @@ import ai.onnxruntime.TensorInfo
 import android.util.Log
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
+import kotlin.math.exp
+import kotlin.random.Random
 
 private const val TAG_DECODER = "PhoWhisperDecoderONNX"
 
@@ -27,36 +29,19 @@ class PhoWhisperDecoderONNX(
         val eosTokenId: Long = 50257L,
         val padTokenId: Long = 50256L,
         val debugSteps: Int = 3,
+        val temperature: Float = 1.0f,
+        val topK: Int = 0,
+        val topP: Float = 0.0f,
+        val seed: Long? = null,
     )
-
-    /**
-     * Tạo initial past_kv: 24 tensors với shape [1, 8, 0, 64] (6 layers × 4 tensors).
-     * Những tensor này là Float32 arrays có length = 0.
-     */
-    private fun createInitialPastKv(env: OrtEnvironment): Map<String, OnnxTensor> {
-        val kv = mutableMapOf<String, OnnxTensor>()
-        val shape = longArrayOf(1, 8, 0, 64) // batch=1, heads=8, seq=0, head_dim=64
-
-        repeat(6) { layer ->
-            val keyDec = "past_key_values.$layer.decoder.key"
-            val valDec = "past_key_values.$layer.decoder.value"
-            val keyEnc = "past_key_values.$layer.encoder.key"
-            val valEnc = "past_key_values.$layer.encoder.value"
-
-            // Tạo empty tensor (0-length) đúng chuẩn float32
-            val emptyBuffer = FloatBuffer.allocate(0)
-            kv[keyDec] = OnnxTensor.createTensor(env, emptyBuffer, shape)
-            kv[valDec] = OnnxTensor.createTensor(env, emptyBuffer, shape)
-            kv[keyEnc] = OnnxTensor.createTensor(env, emptyBuffer, shape)
-            kv[valEnc] = OnnxTensor.createTensor(env, emptyBuffer, shape)
-        }
-
-        return kv
-    }
 
     /**
      * Helper: tạo use_cache_branch tensor phù hợp dtype runtime.
      * Kiểm tra session.inputInfo["use_cache_branch"] để quyết định BOOL / FLOAT / INT64.
+     */
+    /**
+     * use_cache_branch: model yêu cầu boolean[1]
+     * -> luôn tạo BooleanArray(1) tương ứng, không còn nhánh FLOAT / INT64.
      */
     private fun createUseCacheTensor(
         env: OrtEnvironment,
@@ -67,57 +52,25 @@ class PhoWhisperDecoderONNX(
             ?: error("use_cache_branch not found in decoderSession.inputInfo")
 
         val tensorInfo = info.info as TensorInfo
-        val shape = tensorInfo.shape ?: longArrayOf()
-
-        // Nếu model khai báo shape rỗng (scalar) thì không truyền shape, ngược lại dùng đúng shape từ TensorInfo.
-        return when (tensorInfo.type) {
-            OnnxJavaType.BOOL -> {
-                val arr = booleanArrayOf(value)
-                // OnnxTensor only has (env, BooleanArray) overload, no shape argument
-                OnnxTensor.createTensor(env, arr)
-            }
-            OnnxJavaType.FLOAT -> {
-                val arr = floatArrayOf(if (value) 1f else 0f)
-                val buf = FloatBuffer.wrap(arr)
-                if (shape.isEmpty()) {
-                    OnnxTensor.createTensor(env, buf)
-                } else {
-                    OnnxTensor.createTensor(env, buf, shape)
-                }
-            }
-            OnnxJavaType.INT64 -> {
-                val arr = longArrayOf(if (value) 1L else 0L)
-                val buf = LongBuffer.wrap(arr)
-                if (shape.isEmpty()) {
-                    OnnxTensor.createTensor(env, buf)
-                } else {
-                    OnnxTensor.createTensor(env, buf, shape)
-                }
-            }
-            else -> {
-                // Fallback: treat as float scalar/vector 0/1
-                val arr = floatArrayOf(if (value) 1f else 0f)
-                val buf = FloatBuffer.wrap(arr)
-                if (shape.isEmpty()) {
-                    OnnxTensor.createTensor(env, buf)
-                } else {
-                    OnnxTensor.createTensor(env, buf, shape)
-                }
-            }
+        require(tensorInfo.type == OnnxJavaType.BOOL) {
+            "Expected use_cache_branch to be BOOL, but got ${tensorInfo.type}"
         }
+
+        // Model: use_cache_branch: boolean[1]
+        val arr = booleanArrayOf(value)
+        return OnnxTensor.createTensor(env, arr)
     }
 
 
     /**
-     * Helper xây map input cho một bước decode.
-     * Bind đầy đủ input_ids, encoder_hidden_states, past_key_values.N.* và use_cache_branch theo IO spec.
+     * Helper build input cho một bước decode.
+     * BIND: input_ids, encoder_hidden_states, use_cache_branch, và TOÀN BỘ past_key_values.N.*
      */
     private fun buildInputs(
         env: OrtEnvironment,
         encoderTensor: OnnxTensor,
         currentTokenId: Long,
         pastKv: Map<String, OnnxTensor>?,
-        useCacheBranch: Boolean,
     ): MutableMap<String, OnnxTensor> {
         val inputIds = LongArray(1) { currentTokenId }
         val inputIdsTensor = OnnxTensor.createTensor(
@@ -126,21 +79,24 @@ class PhoWhisperDecoderONNX(
             longArrayOf(1, 1)
         )
 
+        val useCacheBranch = pastKv != null && pastKv.isNotEmpty()
         val useCacheTensor = createUseCacheTensor(
             env = env,
             session = onnxManager.decoderSession,
             value = useCacheBranch
         )
 
-        val inputs = mutableMapOf<String, OnnxTensor>(
+        val inputs = mutableMapOf(
             "input_ids" to inputIdsTensor,
             "encoder_hidden_states" to encoderTensor,
             "use_cache_branch" to useCacheTensor,
         )
 
+        // FEED LẠI TOÀN BỘ KV: cả encoder lẫn decoder
         pastKv?.forEach { (name, tensor) ->
             inputs[name] = tensor
         }
+
         return inputs
     }
 
@@ -151,32 +107,46 @@ class PhoWhisperDecoderONNX(
      */
     private fun cloneTensor(env: OrtEnvironment, t: OnnxTensor): OnnxTensor {
         val info = t.info as TensorInfo
-        val shape = info.shape ?: longArrayOf()
-
-        fun hasNonPositiveDim(s: LongArray): Boolean = s.any { it <= 0L }
-
+//        val shape = info.shape ?: longArrayOf()
         val value = t.value
 
-        // Nếu tensor rỗng hoặc có shape chứa dimension <= 0, tránh tạo tensor mới
-        // vì ORT sẽ ném OrtException. Với KV cache, reuse luôn tensor gốc là an toàn
-        // trong phạm vi vòng lặp hiện tại.
-        if ((value is FloatArray && value.isEmpty()) ||
-            (value is LongArray && value.isEmpty()) ||
-            (value is BooleanArray && value.isEmpty()) ||
-            (shape.isNotEmpty() && hasNonPositiveDim(shape))
-        ) {
-//            return t
-            return OnnxTensor.createTensor(env, FloatBuffer.allocate(0), shape)
+        val rawShape = info.shape ?: longArrayOf()
+        val shape = if (rawShape.isNotEmpty()) {
+            rawShape.map { dim -> if (dim <= 0L) 1L else dim }.toLongArray()
+        } else {
+            longArrayOf()
+        }
+
+        // KHÔNG throw nữa, chỉ optional log nếu có dim<=0
+        if (rawShape.any { it <= 0L }) {
+            Log.w(TAG_DECODER, "cloneTensor: dynamic dims in $rawShape, using $shape instead")
         }
 
         return when (info.type) {
             OnnxJavaType.FLOAT -> {
                 when (val raw = value) {
                     is FloatArray -> {
-                        if (hasNonPositiveDim(shape)) {
-                            OnnxTensor.createTensor(env, raw)
+                        if (shape.isEmpty()) {
+                            OnnxTensor.createTensor(env, raw.clone())
                         } else {
                             OnnxTensor.createTensor(env, FloatBuffer.wrap(raw.clone()), shape)
+                        }
+                    }
+                    is Array<*> -> {
+                        val totalSize = shape.fold(1L) { acc, dim -> acc * dim }
+                        val flattened = flattenNestedArrayToFloat(raw, totalSize.toInt())
+                        OnnxTensor.createTensor(env, FloatBuffer.wrap(flattened), shape)
+                    }
+                    is FloatBuffer -> {
+                        val totalSize = if (shape.isNotEmpty()) {
+                            shape.fold(1L) { acc, dim -> acc * dim }.toInt()
+                        } else raw.remaining()
+                        val arr = FloatArray(totalSize)
+                        raw.duplicate().get(arr)
+                        if (shape.isEmpty()) {
+                            OnnxTensor.createTensor(env, arr)
+                        } else {
+                            OnnxTensor.createTensor(env, FloatBuffer.wrap(arr), shape)
                         }
                     }
                     else -> OnnxTensor.createTensor(env, raw)
@@ -185,10 +155,27 @@ class PhoWhisperDecoderONNX(
             OnnxJavaType.INT64 -> {
                 when (val raw = value) {
                     is LongArray -> {
-                        if (hasNonPositiveDim(shape)) {
-                            OnnxTensor.createTensor(env, raw)
+                        if (shape.isEmpty()) {
+                            OnnxTensor.createTensor(env, raw.clone())
                         } else {
                             OnnxTensor.createTensor(env, LongBuffer.wrap(raw.clone()), shape)
+                        }
+                    }
+                    is Array<*> -> {
+                        val totalSize = shape.fold(1L) { acc, dim -> acc * dim }
+                        val flattened = flattenNestedArrayToLong(raw, totalSize.toInt())
+                        OnnxTensor.createTensor(env, LongBuffer.wrap(flattened), shape)
+                    }
+                    is LongBuffer -> {
+                        val totalSize = if (shape.isNotEmpty()) {
+                            shape.fold(1L) { acc, dim -> acc * dim }.toInt()
+                        } else raw.remaining()
+                        val arr = LongArray(totalSize)
+                        raw.duplicate().get(arr)
+                        if (shape.isEmpty()) {
+                            OnnxTensor.createTensor(env, arr)
+                        } else {
+                            OnnxTensor.createTensor(env, LongBuffer.wrap(arr), shape)
                         }
                     }
                     else -> OnnxTensor.createTensor(env, raw)
@@ -204,27 +191,80 @@ class PhoWhisperDecoderONNX(
         }
     }
 
+    private fun flattenNestedArrayToFloat(arr: Array<*>, expectedSize: Int): FloatArray {
+        val result = FloatArray(expectedSize)
+        var idx = 0
+        fun recurse(obj: Any?) {
+            when (obj) {
+                is FloatArray -> obj.forEach { if (idx < expectedSize) result[idx++] = it }
+                is Array<*> -> obj.forEach { recurse(it) }
+                is Float -> if (idx < expectedSize) result[idx++] = obj
+            }
+        }
+        recurse(arr)
+        if (idx != expectedSize) {
+            Log.w(
+                TAG_DECODER,
+                "flattenNestedArrayToFloat: filled=$idx, expected=$expectedSize (possible mismatch with declared shape)"
+            )
+        }
+        return result
+    }
+
+    private fun flattenNestedArrayToLong(arr: Array<*>, expectedSize: Int): LongArray {
+        val result = LongArray(expectedSize)
+        var idx = 0
+        fun recurse(obj: Any?) {
+            when (obj) {
+                is LongArray -> obj.forEach { if (idx < expectedSize) result[idx++] = it }
+                is Array<*> -> obj.forEach { recurse(it) }
+                is Long -> if (idx < expectedSize) result[idx++] = obj
+            }
+        }
+        recurse(arr)
+        if (idx != expectedSize) {
+            Log.w(
+                TAG_DECODER,
+                "flattenNestedArrayToLong: filled=$idx, expected=$expectedSize (possible mismatch with declared shape)"
+            )
+        }
+        return result
+    }
+
     /**
      * Cập nhật KV cache từ OrtSession.Result.
-     * Lọc các output có tên bắt đầu bằng "present." (present.N.decoder/encoder.key/value)
-     * và gom lại thành map<String, OnnxTensor> để dùng cho bước decode sau.
+     * Lấy tất cả output "present.N.decoder/encoder.key/value"
+     * -> map sang "past_key_values.N.decoder/encoder.key/value".
      */
     private fun updatePastKvFromOutputs(
         env: OrtEnvironment,
         ortResult: OrtSession.Result,
         previousKv: Map<String, OnnxTensor>?,
     ): Map<String, OnnxTensor> {
-        // Giải phóng cache cũ để tránh rò rỉ bộ nhớ
+        // Giải phóng cache cũ
         previousKv?.values?.forEach { it.close() }
 
         val newKv = mutableMapOf<String, OnnxTensor>()
+
         for ((name, value) in ortResult) {
             if (!name.startsWith("present.")) continue
+
             val tensor = value as? OnnxTensor ?: continue
+            val info = tensor.info as TensorInfo
+            val rawShape = info.shape ?: longArrayOf()
+            // 0 hoặc -1 coi như dynamic, với batch_size=1 thì thay bằng 1
+            val effectiveShape = if (rawShape.isNotEmpty()) {
+                rawShape.map { dim -> if (dim <= 0L) 1L else dim }.toLongArray()
+            } else {
+                longArrayOf() // scalar / để cloneTensor tự xử
+            }
+
+            // Map present.* -> past_key_values.*
             val mappedName = name.replaceFirst("present.", "past_key_values.")
             val cloned = cloneTensor(env, tensor)
             newKv[mappedName] = cloned
         }
+
         return newKv
     }
 
@@ -235,6 +275,75 @@ class PhoWhisperDecoderONNX(
             }
         }
         return outputs[0]
+    }
+
+    /**
+     * Softmax over logits with temperature.
+     */
+    private fun softmax(logits: FloatArray, temperature: Float): FloatArray {
+        val t = if (temperature <= 0f) 1e-6f else temperature
+        var maxLogit = Float.NEGATIVE_INFINITY
+        for (v in logits) if (v / t > maxLogit) maxLogit = v / t
+        var sum = 0.0
+        val probs = FloatArray(logits.size)
+        for (i in logits.indices) {
+            val v = logits[i] / t
+            val e = exp((v - maxLogit).toDouble()).toFloat()
+            probs[i] = e
+            sum += e
+        }
+        val inv = (1.0 / sum).toFloat()
+        for (i in probs.indices) probs[i] *= inv
+        return probs
+    }
+
+    /**
+     * Sample next token from logits using temperature + topK/topP.
+     * If all sampling disabled (topK=0, topP=0, temperature=1), falls back to greedy argmax.
+     */
+    private fun sampleNextToken(
+        logits: FloatArray,
+        config: DecoderConfig,
+    ): Long {
+        val greedy = (config.temperature == 1.0f && config.topK <= 0 && config.topP <= 0f)
+        if (greedy) {
+            return argmax(logits).toLong()
+        }
+        val probs = softmax(logits, config.temperature)
+
+        // Apply topK
+        val indices = probs.indices.toList()
+        val sorted = indices.sortedByDescending { probs[it] }
+        val filteredByTopK = if (config.topK > 0 && config.topK < sorted.size) {
+            sorted.take(config.topK)
+        } else sorted
+
+        // Apply topP (nucleus)
+        var cum = 0.0f
+        val filteredByTopP = if (config.topP > 0f && config.topP < 1f) {
+            val list = mutableListOf<Int>()
+            for (idx in filteredByTopK) {
+                val p = probs[idx]
+                cum += p
+                list += idx
+                if (cum >= config.topP) break
+            }
+            if (list.isEmpty()) filteredByTopK else list
+        } else filteredByTopK
+
+        // Renormalize
+        var sumP = 0.0f
+        for (i in filteredByTopP) sumP += probs[i]
+        val renorm = if (sumP > 0f) 1f / sumP else 1f
+
+        val rng = if (config.seed != null) Random(config.seed) else Random.Default
+        val r = rng.nextFloat()
+        var acc = 0.0f
+        for (i in filteredByTopP) {
+            acc += probs[i] * renorm
+            if (r <= acc) return i.toLong()
+        }
+        return filteredByTopP.first().toLong()
     }
 
     fun runAutoregressive(
@@ -250,7 +359,8 @@ class PhoWhisperDecoderONNX(
         val tokens = mutableListOf<Long>()
         tokens += tokenizer.bosTokenId.toLong()
 
-        var pastKv: Map<String, OnnxTensor>? = createInitialPastKv(env)
+        // Bước 1: không có KV cache, để model chạy nhánh no-cache theo IO spec
+        var pastKv: Map<String, OnnxTensor>? = null
 
         Log.d(TAG_DECODER, "runAutoregressive: tEnc=$tEnc, initialToken=${tokens.first()}")
 
@@ -263,22 +373,27 @@ class PhoWhisperDecoderONNX(
                     encoderTensor = encoderTensor,
                     currentTokenId = currentTokenId,
                     pastKv = pastKv,
-                    useCacheBranch = step > 0
                 )
 
                 onnxManager.decoderSession.run(inputs).use { outputs ->
                     try {
                         val logitsOnnxValue: OnnxValue = getLogitsValue(outputs)
-//                        @Suppress("UNCHECKED_CAST")
-//                        val logits = logitsOnnxValue.value as Array<Array<FloatArray>>
-//                        val lastLogits = logits[0][0]
                         val raw = logitsOnnxValue.value
                         val lastLogits: FloatArray = when (raw) {
                             is Array<*> -> {
-                                when (raw[0]) {
-                                    is Array<*> -> (raw[0] as Array<FloatArray>)[0]
-                                    is FloatArray -> raw[0] as FloatArray
-                                    else -> error("Unsupported logits type: ${raw::class}")
+                                val first = raw.getOrNull(0)
+                                when (first) {
+                                    is Array<*> -> {
+                                        val inner = first.getOrNull(0)
+                                        when (inner) {
+                                            is FloatArray -> inner
+                                            is FloatBuffer -> FloatArray(inner.remaining()).also { inner.get(it) }
+                                            else -> error("Unsupported nested logits type: ${inner?.let { it::class.toString() } ?: "null"}")
+                                        }
+                                    }
+                                    is FloatArray -> first
+                                    is FloatBuffer -> FloatArray(first.remaining()).also { first.get(it) }
+                                    else -> error("Unsupported logits type: ${first?.let { it::class.toString() } ?: "null"}")
                                 }
                             }
                             is FloatArray -> raw
@@ -288,7 +403,7 @@ class PhoWhisperDecoderONNX(
                             else -> error("Unsupported logits type: ${raw::class}")
                         }
 
-                        val nextId = argmax(lastLogits).toLong()
+                        val nextId = sampleNextToken(lastLogits, config)
 
                         if (step < config.debugSteps) {
                             val maxLogit = lastLogits.maxOrNull() ?: Float.NaN
@@ -299,33 +414,21 @@ class PhoWhisperDecoderONNX(
 
                         if (nextId == config.eosTokenId) {
                             Log.d(TAG_DECODER, "EOS reached at step=$step, totalTokens=${tokens.size}")
-//                            inputs.values.forEach { it.close() }
                             inputs.forEach { (name, tensor) ->
-                                // KHÔNG đóng encoder_hidden_states
                                 if (name == "encoder_hidden_states") return@forEach
-
-                                // KHÔNG đóng past_key_values.*, vì nó được clone và lưu lại (sẽ đóng ở updatePastKv)
                                 if (name.startsWith("past_key_values")) return@forEach
-
                                 tensor.close()
                             }
-
                             return tokenizer.decode(tokens.toLongArray())
                         }
 
                         pastKv = updatePastKvFromOutputs(env, outputs, pastKv)
                     } finally {
-//                        inputs.values.forEach { it.close() }
                         inputs.forEach { (name, tensor) ->
-                            // KHÔNG đóng encoder_hidden_states
                             if (name == "encoder_hidden_states") return@forEach
-
-                            // KHÔNG đóng past_key_values.*, vì nó được clone và lưu lại (sẽ đóng ở updatePastKv)
                             if (name.startsWith("past_key_values")) return@forEach
-
                             tensor.close()
                         }
-
                     }
                 }
             }

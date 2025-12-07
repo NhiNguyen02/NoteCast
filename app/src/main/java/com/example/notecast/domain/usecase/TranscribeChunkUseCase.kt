@@ -13,7 +13,7 @@ private const val TAG_TRANSCRIBE = "TranscribeChunkUseCase"
 
 /**
  * TranscribeChunkUseCase
- * - Nhận 1 chunk PCM float 16kHz từ Segmenter (thường < 30s).
+ * - Nhận 1 chunk PCM float 16kHz từ Segmenter (thường ≤ 30s).
  * - Tính mel (log-mel [80, T]).
  * - Chuẩn hóa T theo giới hạn encoder (T <= 3000 mel frames ~ 30s).
  * - Chạy encoder & decoder PhoWhisper ONNX và trả về text.
@@ -22,7 +22,7 @@ class TranscribeChunkUseCase @Inject constructor(
     private val melProcessor: MelProcessor,
     private val encoder: PhoWhisperEncoderONNX,
     private val decoder: PhoWhisperDecoderONNX,
-    @Named("IO") private val ioDispatcher: CoroutineDispatcher,
+    @param:Named("IO") private val ioDispatcher: CoroutineDispatcher,
 ) {
 
     /**
@@ -43,16 +43,18 @@ class TranscribeChunkUseCase @Inject constructor(
         Log.d(TAG_TRANSCRIBE, "mel computed: nFrames=$nFrames, melSize=${mel.size}")
         if (nFrames == 0) return@withContext ""
 
-        val usedFrames = if (nFrames <= maxMelFrames) {
-            nFrames
-        } else {
-            Log.w(TAG_TRANSCRIBE, "nFrames=$nFrames > $maxMelFrames, trimming")
-            maxMelFrames
+        // Upstream contract: chunk ≤ 30s (≤ 3000 frames). If violated, assert/log.
+        if (nFrames > maxMelFrames) {
+            Log.w(TAG_TRANSCRIBE, "Upstream chunk too long: nFrames=$nFrames > $maxMelFrames (expected ≤ 3000). Trimming to $maxMelFrames.")
+            // Optionally assert in debug builds (no-op in release)
+            check(nFrames <= maxMelFrames + 500) { "Severely long chunk detected: nFrames=$nFrames" }
         }
+
+        val usedFrames = minOf(nFrames, maxMelFrames)
 
         val paddedMelSize = 80 * maxMelFrames
         val melPadded = FloatArray(paddedMelSize) { 0f }
-        val copyFrames = minOf(nFrames, maxMelFrames)
+        val copyFrames = usedFrames
         val copyFloats = 80 * copyFrames
         mel.copyInto(destination = melPadded, endIndex = copyFloats)
         Log.d(TAG_TRANSCRIBE, "melPaddedSize=$paddedMelSize, copyFrames=$copyFrames, usedFrames=$usedFrames")
