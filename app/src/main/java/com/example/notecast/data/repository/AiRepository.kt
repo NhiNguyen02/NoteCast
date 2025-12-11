@@ -5,6 +5,7 @@ import com.example.notecast.BuildConfig
 import com.example.notecast.data.remote.GeminiApiService
 import com.example.notecast.data.remote.dto.*
 import com.example.notecast.domain.model.MindMapNode
+import com.example.notecast.domain.model.ProcessedTextData
 import kotlinx.serialization.json.Json
 import java.util.UUID
 import javax.inject.Inject
@@ -16,6 +17,7 @@ class AiRepository @Inject constructor(
     private val apiKey = BuildConfig.GEMINI_API_KEY
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
+    //Prompt tạo mindmap
     suspend fun generateMindMap(noteContent: String): MindMapNode {
         val prompt = """
             Bạn là chuyên gia tạo Sơ đồ tư duy. Hãy phân tích văn bản sau và tạo cấu trúc JSON Mindmap.
@@ -64,6 +66,52 @@ class AiRepository @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             errorNode("Lỗi: ${e.message}")
+        }
+    }
+
+
+    //Prompt xử lý chuẩn hóa hậu kỳ
+    suspend fun processNlpPostProcessing(content: String): ProcessedTextData {
+        val prompt = """
+            Bạn là một hệ thống Xử lý Hậu kỳ NLP (NLP Post-Processing) Tiếng Việt.
+            Đầu vào là văn bản thô (raw transcript), có thể thiếu dấu câu và sai chính tả do nhận dạng giọng nói (ví dụ: 'ăn chứa' -> 'ăn chưa').
+            
+            Nhiệm vụ (Trả về JSON duy nhất):
+            1. [ASR Correction & Punctuation]: Sửa lỗi chính tả ASR, thêm dấu câu, viết hoa chuẩn xác.
+            
+            Văn bản đầu vào: "$content"
+            
+            Cấu trúc JSON bắt buộc:
+            {
+              "normalizedText": "Văn bản đã sửa hoàn chỉnh...", 
+              "keywords": ["Từ khóa 1", "Từ khóa 2", "..." ] 
+            }
+        """.trimIndent()
+
+        return try {
+            // Tạo Request
+            val request = GeminiRequest(
+                contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = prompt))))
+            )
+
+            // Gọi API
+            val response = apiService.generateContent(apiKey, request)
+
+            // Lấy kết quả thô
+            val rawText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                ?: throw Exception("AI không trả về dữ liệu")
+
+            // Làm sạch và Parse JSON
+            val jsonText = cleanJson(rawText)
+            jsonParser.decodeFromString<ProcessedTextData>(jsonText)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Fallback: Nếu lỗi, trả về văn bản gốc và không có keywords
+            ProcessedTextData(
+                normalizedText = content,
+                keywords = emptyList()
+            )
         }
     }
 

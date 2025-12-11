@@ -94,6 +94,7 @@ fun NoteEditScreen(
                     folderName = state.folderName, // "Chưa phân loại" hoặc Tên folder
                     isProcessing = state.isSummarizing,
                     availableFolders = state.availableFolders,
+                    isNormalizing = state.isNormalizing,
                     hasMindMap = state.mindMapData != null,
                     onFolderSelected = { folder ->
                         viewModel.onEvent(NoteEditEvent.OnFolderSelected(folder))
@@ -187,14 +188,20 @@ fun NoteEditScreen(
 
     }
     if (state.isGeneratingMindMap) {
-        // Sử dụng ProcessingDialog bạn đã có
+
         ProcessingDialog(
             percent = state.processingPercent,
             step = 1, // Hoặc số bước tùy logic của dialog bạn
             onDismissRequest = {
-                // Tùy chọn: Có cho phép hủy khi đang tạo không?
-                // Nếu không, để trống hoặc không làm gì
+
             }
+        )
+    }
+    if (state.isNormalizing){
+        ProcessingDialog(
+            percent = state.processingPercent,
+            step = 1,
+            onDismissRequest = {}
         )
     }
 
@@ -249,6 +256,7 @@ fun NoteInfoAndActions(
     onSummarize: () -> Unit,
     onNormalize: () -> Unit,
     hasMindMap: Boolean,
+    isNormalizing: Boolean,
     onMindMap: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -286,6 +294,7 @@ fun NoteInfoAndActions(
                 label = "Chuẩn hóa",
                 leadingIcon = rememberVectorPainter(Icons.Outlined.AutoFixHigh),
                 onClick = onNormalize,
+                isLoading = isNormalizing,
                 backgroundBrush = Brush.verticalGradient(
                     0.0f to Color(0xff00D2FF),
                     0.59f to Color(0xff307FE3),
@@ -348,17 +357,9 @@ fun ActionChip(
                     tint = labelColor,
                     modifier = Modifier.size(20.dp)
                 )
-                if (isLoading) {
-                    Text("Đang xử lý...", fontSize = 14.sp, color = labelColor)
-                    Spacer(Modifier.width(8.dp))
-                    CircularProgressIndicator(
-                        Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = labelColor
-                    )
-                } else {
-                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = labelColor)
-                }
+
+                Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = labelColor)
+
             }
         }
     }
@@ -381,10 +382,3 @@ fun formatNoteDate(timestamp: Long): String {
 }
 
 
-// Preview: Bạn cần tạo một State giả để preview, không cần MockViewModel phức tạp
-@Preview(showBackground = true)
-@Composable
-fun PreviewNoteEditScreen() {
-    // Lưu ý: Preview sẽ khó hoạt động với HiltViewModel trừ khi bạn tách NoteEditScreenContent ra riêng (như HomeScreen)
-    // Để đơn giản, ta bỏ qua preview tích hợp ViewModel ở đây
-}
