@@ -1,5 +1,7 @@
 package com.example.notecast.presentation.ui
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,35 +24,28 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.notecast.domain.model.ChunkResult
 import com.example.notecast.presentation.navigation.Screen
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.ui.common_components.AppDrawerContent
 import com.example.notecast.presentation.ui.dialog.CreateNoteDialog
 import com.example.notecast.presentation.ui.folderscreen.FolderScreen
 import com.example.notecast.presentation.ui.homescreen.HomeScreen
+import com.example.notecast.presentation.ui.notedetail.NoteDetailTextScreen
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.ui.record.RecordingScreen
 import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
-import com.example.notecast.presentation.ui.debug.TokenizerDebugScreen
+import com.example.notecast.utils.formatNoteDate
 import kotlinx.coroutines.launch
-import androidx.navigation.NavBackStackEntry
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainAppScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val appNavController = rememberNavController()
-
-    // Nếu sau này vẫn muốn warmup nhẹ (chỉ tokenizer), có thể bật lại đoạn này.
-    // Hiện tại tắt warmup để tránh block main thread lúc startup.
-    // val noteListViewModel: NoteListViewModel = hiltViewModel()
-    // var asrWarmedUp by remember { mutableStateOf(false) }
-    // LaunchedEffect(Unit) {
-    //     if (!asrWarmedUp) {
-    //         noteListViewModel.warmupAsr()
-    //         asrWarmedUp = true
-    //     }
-    // }
 
     val navBackStackEntry by appNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
@@ -113,8 +108,26 @@ fun MainAppScreen() {
                     HomeScreen(
                         drawerState = drawerState,
                         onOpenCreateDialog = { showCreateDialog = true },
-                        onNoteClick = { noteId ->
-                            appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
+                        onNoteClick = { note ->
+                            if (note.noteType == "VOICE") {
+                                val title = note.title
+                                val dateLabel = formatNoteDate(note.createdAt)
+                                val content = note.rawText ?: note.content.orEmpty()
+
+                                val chunksJson: String? = note.timestampsJson
+                                // timestampsJson đã là JSON string của danh sách chunk theo EntityMapper
+
+                                appNavController.navigate(
+                                    Screen.NoteDetail.createRoute(
+                                        title = title,
+                                        date = dateLabel,
+                                        content = content,
+                                        chunksJson = chunksJson,
+                                    )
+                                )
+                            } else {
+                                appNavController.navigate(Screen.NoteEdit.createRoute(note.id))
+                            }
                         },
                         navController = appNavController
                     )
@@ -124,10 +137,9 @@ fun MainAppScreen() {
                 composable(
                     route = Screen.NoteEdit.routeWithArgs,
                     arguments = Screen.NoteEdit.arguments
-                ) { backStackEntry: NavBackStackEntry ->
+                ) {
                     NoteEditScreen(
                         onNavigateBack = { appNavController.popBackStack() },
-                        backStackEntry = backStackEntry,
                     )
                 }
 
@@ -144,37 +156,27 @@ fun MainAppScreen() {
                 composable(Screen.Notifications.route) { PlaceholderScreen(text = "Thông báo") }
                 composable(Screen.Settings.route) {
                     SettingsScreen(
-                        onBackClick = {appNavController.popBackStack()}
+                        onBackClick = { appNavController.popBackStack() }
                     )
+                }
 
+                // 4. Màn hình chi tiết ghi chú văn bản (NoteDetailTextScreen) nhận trực tiếp transcript
+                composable(
+                    route = Screen.NoteDetail.routeWithArgs,
+                    arguments = Screen.NoteDetail.arguments
+                ) {
+                    NoteDetailTextScreen(
+                        onBack = { appNavController.popBackStack() }
+                    )
                 }
 
                 // 5. Màn hình GHI ÂM
                 composable(Screen.Recording.route) {
                     RecordingScreen(
+                        navController = appNavController,
                         onClose = { appNavController.navigateUp() },
-                        onRecordingFinished = { transcript, audioFilePath, durationMs, sampleRate, channels ->
-                            appNavController.popBackStack()
-                            appNavController.navigate(
-                                Screen.NoteEdit.createRouteWithTranscript(
-//                                    noteId = "new_voice",
-                                    title = "Ghi chú ghi âm",
-                                    initialContent = transcript,
-                                    audioPath = audioFilePath,
-                                    durationMs = durationMs,
-                                    sampleRate = sampleRate,
-                                    channels = channels,
-                                )
-                            )
-                        }
                     )
                 }
-
-                // 6. Tokenizer Debug (truy cập từ HomeScreen)
-                composable(Screen.TokenizerDebug.route) {
-                    TokenizerDebugScreen()
-                }
-
 
                 // Placeholder
                 composable(Screen.Notifications.route) { PlaceholderScreen("Thông báo") }
@@ -184,7 +186,7 @@ fun MainAppScreen() {
             if (showCreateDialog) {
                 CreateNoteDialog(
                     onDismiss = { showCreateDialog = false },
-                    onCreate = { type, autoSummary ->
+                    onCreate = { type, _ ->
                         showCreateDialog = false
                         when (type) {
                             "record" -> appNavController.navigate(Screen.Recording.route)

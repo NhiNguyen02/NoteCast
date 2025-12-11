@@ -50,16 +50,19 @@ abstract class AudioModule {
             @Named("vadBuffer") vadBuffer: AudioBuffer<ShortArray>,
             @Named("asrBuffer") asrBuffer: AudioBuffer<ShortArray>,
             @Named("recorderBuffer") recorderBuffer: AudioBuffer<ShortArray>,
+            @ApplicationContext context: Context
         ): AudioEngine = AudioEngine(
             recorder = recorder,
             vadBuffer = vadBuffer,
             asrBuffer = asrBuffer,
             recorderBuffer = recorderBuffer,
+            appContext = context
         )
+
 
         @Provides
         @Singleton
-        fun provideVADManager(@ApplicationContext context: Context): VADManager = VADManager(context)
+        fun provideVADManager(): VADManager = VADManager()
 
         @Provides
         @Singleton

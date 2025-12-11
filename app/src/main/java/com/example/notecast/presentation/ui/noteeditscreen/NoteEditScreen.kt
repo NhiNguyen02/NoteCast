@@ -18,14 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavBackStackEntry
-import com.example.notecast.presentation.navigation.Screen
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.viewmodel.NoteEditViewModel
 import com.example.notecast.utils.formatNoteDate
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 
 /**
  * Màn hình Sửa/Tạo Ghi chú (Đã kết nối ViewModel thật)
@@ -34,25 +30,11 @@ import java.nio.charset.StandardCharsets
 fun NoteEditScreen(
     onNavigateBack: () -> Unit,
     viewModel: NoteEditViewModel = hiltViewModel(),
-    backStackEntry: NavBackStackEntry? = null,
 ) {
-    LaunchedEffect(backStackEntry) {
-        backStackEntry?.arguments?.let { args ->
-            val rawInitial = args.getString(Screen.NoteEdit.initialContentArg) ?: ""
-            val decodedInitial = try {
-                URLDecoder.decode(rawInitial, StandardCharsets.UTF_8.toString())
-            } catch (_: IllegalArgumentException) {
-                rawInitial
-            }
-            if (decodedInitial.isNotBlank()) {
-                viewModel.onEvent(NoteEditEvent.OnContentChanged(decodedInitial))
-            }
-        }
-    }
+    // Route NoteEdit hiện không còn nhận initialContent/audio, ViewModel tự lo load note theo noteId
 
     // 1. Lấy State từ ViewModel
     val state by viewModel.state.collectAsState()
-//    var showFolderDialog by remember { mutableStateOf(false) }
 
     // 2. Logic tự động quay lại khi lưu xong
     LaunchedEffect(state.isSaved) {
@@ -117,7 +99,8 @@ fun NoteEditScreen(
                         ),
                         decorationBox = { innerTextField ->
                             if (state.title.isEmpty()) {
-                                Text("Tiêu đề...",
+                                Text(
+                                    "Tiêu đề...",
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.Gray.copy(alpha = 0.5f)
@@ -159,7 +142,8 @@ fun NoteEditScreen(
                             ),
                             decorationBox = { innerTextField ->
                                 if (state.content.isEmpty()) {
-                                    Text("Bắt đầu soạn...",
+                                    Text(
+                                        "Bắt đầu soạn...",
                                         fontSize = 16.sp,
                                         color = Color.Gray.copy(alpha = 0.5f)
                                     )

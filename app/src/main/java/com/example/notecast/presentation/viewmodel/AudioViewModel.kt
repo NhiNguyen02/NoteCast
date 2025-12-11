@@ -1,16 +1,18 @@
 package com.example.notecast.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.notecast.domain.usecase.PauseRecordingUseCase
-import com.example.notecast.domain.usecase.ResumeRecordingUseCase
-import com.example.notecast.domain.usecase.StartRecordingUseCase
-import com.example.notecast.domain.usecase.StopRecordingUseCase
-import com.example.notecast.domain.usecase.StreamAudioUseCase
-import com.example.notecast.domain.usecase.VadSegmenterUseCase
+import com.example.notecast.domain.usecase.audio.PauseRecordingUseCase
+import com.example.notecast.domain.usecase.audio.ResumeRecordingUseCase
+import com.example.notecast.domain.usecase.audio.StartRecordingUseCase
+import com.example.notecast.domain.usecase.audio.StopRecordingUseCase
+import com.example.notecast.domain.usecase.audio.StreamAudioUseCase
+import com.example.notecast.domain.usecase.audio.VadSegmenterUseCase
 import com.example.notecast.domain.vad.SegmentEvent
 import com.example.notecast.domain.vad.VadState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 enum class RecorderState {
@@ -25,6 +28,8 @@ enum class RecorderState {
     Recording,
     Paused,
 }
+
+private const val TAG_AUDIO = "AudioViewModel"
 
 @HiltViewModel
 class AudioViewModel @Inject constructor(
@@ -52,7 +57,7 @@ class AudioViewModel @Inject constructor(
     private val _waveform = MutableStateFlow<List<Float>>(emptyList())
     val waveform: StateFlow<List<Float>> = _waveform.asStateFlow()
 
-    // Flow phát SegmentEvent ra ngoài cho ASRViewModel/domain nếu cần
+    // Flow phát SegmentEvent ra ngoài nếu UI/logic khác muốn dùng VAD (hiện tại chỉ để monitoring)
     private val _segmentEvents = MutableStateFlow<SegmentEvent>(SegmentEvent.None)
     val segmentEvents: StateFlow<SegmentEvent> = _segmentEvents.asStateFlow()
 
@@ -60,27 +65,19 @@ class AudioViewModel @Inject constructor(
     private var vadJob: Job? = null
     private var timerJob: Job? = null
 
-    /**
-     * Tham chiếu tới ASRViewModel, được set từ UI (Compose) khi cần phối hợp.
-     * Tránh inject vòng tròn giữa hai ViewModel.
-     */
-    private var asrViewModel: ASRViewModel? = null
-
-    fun attachAsrViewModel(vm: ASRViewModel) {
-        asrViewModel = vm
-    }
-
     fun startRecording() {
+        Log.d(TAG_AUDIO, "startRecording: called, currentState=${_recorderState.value}")
         startRecordingUseCase()
         _recorderState.value = RecorderState.Recording
         _recordingDurationMillis.value = 0L
-        asrViewModel?.resetSession()
+        Log.d(TAG_AUDIO, "startRecording: state=${_recorderState.value}, duration=${_recordingDurationMillis.value}")
         startAudioStreamCollection()
         startVadSegmenterCollection()
         startTimer()
     }
 
     fun pauseRecording() {
+        Log.d(TAG_AUDIO, "pauseRecording: called, currentState=${_recorderState.value}")
         pauseRecordingUseCase()
         _recorderState.value = RecorderState.Paused
         // Cancel các job collection nhưng không clear state
@@ -90,28 +87,44 @@ class AudioViewModel @Inject constructor(
         vadJob = null
         timerJob?.cancel()
         timerJob = null
+        Log.d(TAG_AUDIO, "pauseRecording: state=${_recorderState.value}, duration=${_recordingDurationMillis.value}")
     }
 
     fun resumeRecording() {
+        Log.d(TAG_AUDIO, "resumeRecording: called, currentState=${_recorderState.value}")
         resumeRecordingUseCase()
         _recorderState.value = RecorderState.Recording
         // Restart tất cả các collection job để tiếp tục nhận data
         startAudioStreamCollection()
         startVadSegmenterCollection()
         startTimer()
+        Log.d(TAG_AUDIO, "resumeRecording: state=${_recorderState.value}, duration=${_recordingDurationMillis.value}")
     }
 
-    fun stopRecording() {
-        viewModelScope.launch {
-            stopRecordingUseCase()
-            _recorderState.value = RecorderState.Idle
-            audioStreamJob?.cancel(); audioStreamJob = null
-            vadJob?.cancel(); vadJob = null
-            timerJob?.cancel(); timerJob = null
-            _recordingDurationMillis.value = 0L
-            // Việc kết thúc phiên ASR và lưu note hiện do RecordingScreen
-            // chủ động gọi asrViewModel.finishSession(...) với đầy đủ metadata
+    suspend fun stopRecording() {
+        Log.d(TAG_AUDIO, "stopRecording: called, currentState=${_recorderState.value}")
+        // Ensure we run stopRecordingUseCase on IO if it's heavy
+        try {
+            withContext(Dispatchers.IO) {
+                stopRecordingUseCase()
+            }
+            Log.d(
+                TAG_AUDIO,
+                "stopRecording: stopRecordingUseCase finished, repoFilePath=${audioRepository.currentRecordingFilePath}"
+            )
+        } catch (t: Throwable) {
+            Log.e(TAG_AUDIO, "stopRecording: stopRecordingUseCase error=${t.message}", t)
         }
+        _recorderState.value = RecorderState.Idle
+        audioStreamJob?.cancel(); audioStreamJob = null
+        vadJob?.cancel(); vadJob = null
+        timerJob?.cancel(); timerJob = null
+        _recordingDurationMillis.value = 0L
+        Log.d(
+            TAG_AUDIO,
+            "stopRecording: state=${_recorderState.value}, duration=${_recordingDurationMillis.value}, repoFilePath=${audioRepository.currentRecordingFilePath}"
+        )
+        // Kết thúc phiên ghi âm. Luồng ASR hiện được thực thi ở RecordingScreen thông qua TranscribeRecordingUseCase.
     }
 
     private fun startAudioStreamCollection() {
@@ -146,8 +159,8 @@ class AudioViewModel @Inject constructor(
                     }
                     is SegmentEvent.End -> {
                         _vadState.value = VadState.SILENT
-                        // Đẩy chunk sang ASRViewModel để xử lý ASR.
-                        asrViewModel?.submitSegment(event.chunk)
+                        // Trước đây tại đây đẩy chunk sang ASRViewModel để xử lý ONNX local.
+                        // Sau khi chuyển pipeline sang PhoWhisper remote ASR, ta chỉ dùng VAD cho hiển thị/UX.
                     }
                     SegmentEvent.None -> Unit
                 }
@@ -169,6 +182,10 @@ class AudioViewModel @Inject constructor(
     val sampleRate: Int get() = audioRepository.sampleRate
     val channels: Int get() = audioRepository.channels
 
-    // TODO: expose current recording file path when file saving is integrated
-    val currentRecordingFilePath: String? get() = null
+    // Đường dẫn file WAV 16kHz mono PCM16 của phiên ghi âm hiện tại (sẵn sàng sau khi stopRecordingUseCase hoàn tất)
+    val currentRecordingFilePath: String? get() {
+        val path = audioRepository.currentRecordingFilePath
+        Log.d(TAG_AUDIO, "get currentRecordingFilePath: $path")
+        return path
+    }
 }

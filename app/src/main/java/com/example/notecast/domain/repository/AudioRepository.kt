@@ -22,13 +22,13 @@ interface AudioRepository {
     // đọc frames từ ASRBuffer (hoặc VADBuffer) dưới dạng Flow
     fun asrPcmFrames(): Flow<ShortArray>
 
-    /**
-     * Stream các frame PCM16 đã được chuẩn hóa bởi AudioEngine.
-     * Dùng cho VAD/Segmenter/ASR pipeline.
-     */
+    /** Dùng cho waveform/VAD realtime (nếu còn dùng). */
     fun streamPcmFrames(): Flow<ShortArray>
 
     /** Audio params (fixed for ASR contract) */
     val sampleRate: Int
     val channels: Int
+
+    /** Đường dẫn file PCM/WAV của phiên ghi âm hiện tại (sau khi stop). */
+    val currentRecordingFilePath: String?
 }

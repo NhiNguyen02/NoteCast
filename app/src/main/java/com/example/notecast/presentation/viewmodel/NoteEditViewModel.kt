@@ -5,10 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notecast.domain.model.MindMapNode
 import com.example.notecast.domain.model.Note
-import com.example.notecast.domain.usecase.GetAllFoldersUseCase
-import com.example.notecast.domain.usecase.GetNoteByIdUseCase
-import com.example.notecast.domain.usecase.SaveNoteUseCase
-import com.example.notecast.domain.usecase.GenerateMindMapUseCase
+import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
+import com.example.notecast.domain.usecase.notefolder.GetNoteByIdUseCase
+import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
+import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
 import dagger.hilt.android.lifecycle.HiltViewModel

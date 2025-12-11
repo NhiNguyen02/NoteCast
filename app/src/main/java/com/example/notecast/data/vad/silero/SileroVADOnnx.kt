@@ -24,10 +24,10 @@ import kotlin.to
  */
 class SileroVADOnnx(
     context: Context,
-    private val frameSize: Int = 512,
-    private val threshold: Float = 0.5f,
-    private val minSpeechMs: Int = 30,
-    private val frameDurationMs: Int = 32
+    val frameSize: Int = 512,
+    val threshold: Float = 0.5f,
+    minSpeechMs: Int = 30,
+    frameDurationMs: Int = 32
 ) : VADDetector {
 
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment()

@@ -29,8 +29,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.notecast.domain.model.MindMapNode
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlin.math.max
 
 @Composable

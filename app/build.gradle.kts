@@ -31,9 +31,10 @@ android {
 
         // 3. Lấy Key và tạo BuildConfigField
         val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
+        val cloudinaryUrl = localProperties.getProperty("CLOUDINARY_URL") ?: ""
 
-        // "String", "TÊN_BIẾN", "\"GIÁ_TRỊ\""
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        buildConfigField("String", "CLOUDINARY_URL", "\"$cloudinaryUrl\"")
     }
 
     buildTypes {
@@ -104,6 +105,9 @@ dependencies {
     //Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
     implementation("com.google.firebase:firebase-analytics")
+    // Firebase Storage
+    implementation("com.google.firebase:firebase-storage")
+
 
     // ONNX Runtime
     implementation ("com.microsoft.onnxruntime:onnxruntime-android:1.17.1")
@@ -119,4 +123,7 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+
+    // Cloudinary Android SDK for media uploads
+    implementation("com.cloudinary:cloudinary-android:3.1.2")
 }

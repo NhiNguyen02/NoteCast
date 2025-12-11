@@ -3,12 +3,11 @@ package com.example.notecast.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notecast.domain.model.Note
-import com.example.notecast.domain.usecase.DeleteNoteUseCase
-import com.example.notecast.domain.usecase.GetAllFoldersUseCase
-import com.example.notecast.domain.usecase.GetAllNotesUseCase
-import com.example.notecast.domain.usecase.GetNotesByFolderUseCase
-import com.example.notecast.domain.usecase.SaveNoteUseCase
-import com.example.notecast.domain.usecase.WarmupAsrUseCase
+import com.example.notecast.domain.usecase.notefolder.DeleteNoteUseCase
+import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
+import com.example.notecast.domain.usecase.notefolder.GetAllNotesUseCase
+import com.example.notecast.domain.usecase.notefolder.GetNotesByFolderUseCase
+import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.presentation.ui.homescreen.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -22,7 +21,6 @@ class NoteListViewModel @Inject constructor(
     private val saveNoteUseCase: SaveNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
     private val getNotesByFolderUseCase: GetNotesByFolderUseCase,
-    private val warmupAsrUseCase: WarmupAsrUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NoteListState())
@@ -175,9 +173,5 @@ class NoteListViewModel @Inject constructor(
                 saveNoteUseCase(updatedNote)
             }
         }
-    }
-
-    suspend fun warmupAsr() {
-        warmupAsrUseCase()
     }
 }

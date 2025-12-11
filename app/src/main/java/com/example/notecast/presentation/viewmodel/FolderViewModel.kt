@@ -4,13 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.domain.model.Note
-import com.example.notecast.domain.usecase.DeleteFolderUseCase
-import com.example.notecast.domain.usecase.DeleteNoteUseCase
-import com.example.notecast.domain.usecase.GetAllFoldersUseCase
-import com.example.notecast.domain.usecase.GetAllNotesUseCase // <-- IMPORT MỚI
-import com.example.notecast.domain.usecase.GetNotesByFolderUseCase
-import com.example.notecast.domain.usecase.SaveFolderUseCase
-import com.example.notecast.domain.usecase.SaveNoteUseCase
+import com.example.notecast.domain.usecase.notefolder.DeleteFolderUseCase
+import com.example.notecast.domain.usecase.notefolder.DeleteNoteUseCase
+import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
+import com.example.notecast.domain.usecase.notefolder.GetAllNotesUseCase // <-- IMPORT MỚI
+import com.example.notecast.domain.usecase.notefolder.GetNotesByFolderUseCase
+import com.example.notecast.domain.usecase.notefolder.SaveFolderUseCase
+import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

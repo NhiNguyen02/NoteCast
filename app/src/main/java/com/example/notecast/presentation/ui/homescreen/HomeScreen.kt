@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.R
+import com.example.notecast.domain.model.Note
 import com.example.notecast.presentation.ui.common_components.NoteCard
 import android.graphics.Color as AndroidColor
 import com.example.notecast.presentation.ui.filter.FilterScreen
@@ -60,7 +61,7 @@ import com.example.notecast.presentation.navigation.Screen
 fun HomeScreen(
     drawerState: DrawerState,
     onOpenCreateDialog: () -> Unit,
-    onNoteClick: (String) -> Unit,
+    onNoteClick: (Note) -> Unit,
     navController: NavController,
     // ViewModel được inject tự động tại đây
     viewModel: NoteListViewModel = hiltViewModel()
@@ -96,17 +97,17 @@ fun HomeScreen(
             },
 
             // Xử lý click vào note
-            onNoteClick = { noteId ->
+            onNoteClick = { note ->
                 if (isSelectionMode) {
                     // Nếu đang chọn -> Toggle
-                    if (selectedNoteIds.contains(noteId)) selectedNoteIds.remove(noteId)
-                    else selectedNoteIds.add(noteId)
+                    if (selectedNoteIds.contains(note.id)) selectedNoteIds.remove(note.id)
+                    else selectedNoteIds.add(note.id)
 
                     // Nếu bỏ chọn hết -> Tắt chế độ chọn
                     if (selectedNoteIds.isEmpty()) isSelectionMode = false
                 } else {
                     // Nếu bình thường -> Mở chi tiết
-                    onNoteClick(noteId)
+                    onNoteClick(note)
                 }
             },
 
@@ -143,11 +144,6 @@ fun HomeScreen(
                 isSelectionMode = false
                 selectedNoteIds.clear()
             },
-
-            // Xử lý mở màn hình TokenizerDebug
-            onOpenTokenizerDebug = {
-                navController.navigate(Screen.TokenizerDebug.route)
-            }
         )
 
         // Overlay loading khi chuẩn bị chuyển sang màn ghi âm
@@ -216,13 +212,12 @@ private fun HomeScreenContent(
     onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
     onOpenCreateDialog: () -> Unit,
-    onNoteClick: (String) -> Unit,
+    onNoteClick: (Note) -> Unit,
     onNoteLongClick: (String) -> Unit,
     onSelectAllClick: () -> Unit,
     onDeleteSelected: () -> Unit,
     onMoveSelected: () -> Unit,
     onCloseSelectionMode: () -> Unit,
-    onOpenTokenizerDebug: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val search = ""
@@ -234,19 +229,6 @@ private fun HomeScreenContent(
         floatingActionButton = {
             if (!isSelectionMode) {
                 Column {
-                    // New debug button on top
-//                    Box(
-//                        modifier = Modifier
-//                            .padding(bottom = 8.dp)
-//                            .size(56.dp)
-//                            .shadow(elevation = 6.dp, shape = CircleShape)
-//                            .clip(CircleShape)
-//                            .background(Color.Gray)
-//                            .clickable { onOpenTokenizerDebug() },
-//                        contentAlignment = Alignment.Center,
-//                    ) {
-//                        Text(text = "Test\nTok", color = Color.White, fontSize = 10.sp)
-//                    }
                     // Existing FAB below
                     Box(
                         modifier = Modifier
@@ -419,19 +401,20 @@ private fun HomeScreenContent(
                 }
             } else {
                 LazyColumn(
-
                     modifier = Modifier
                         .let {
                             if (!isSelectionMode) it.windowInsetsPadding(WindowInsets.navigationBars)
                             else it.padding(bottom = 5.dp)
                         }
-                        .weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(state.filteredAndSortedNotes, key = { it.id }) { note ->
                         val folder = state.allFolders.find { it.id == note.folderId }
                         val folderName = folder?.name ?: "Chưa phân loại"
                         val folderColor = try {
                             if (folder?.colorHex != null) Color(AndroidColor.parseColor(folder.colorHex))
-                            else Color(0xFFCCA8FF) // Màu tím nhạt cho "Chưa phân loại"
+                            else Color(0xFFCCA8FF)
                         } catch (e: Exception) {
                             PrimaryAccent
                         }
@@ -442,7 +425,7 @@ private fun HomeScreenContent(
                             folderColor = folderColor,
                             isSelectionMode = isSelectionMode,
                             isSelected = isSelected,
-                            onClick = { onNoteClick(note.id) },
+                            onClick = { onNoteClick(note) },
                             onLongClick = { onNoteLongClick(note.id) },
                             onFavoriteClick = { onEvent(NoteListEvent.OnToggleFavorite(note)) },
                             onPinClick = { onEvent(NoteListEvent.OnTogglePin(note)) }

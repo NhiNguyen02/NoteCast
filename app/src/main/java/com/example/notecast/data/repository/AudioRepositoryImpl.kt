@@ -27,10 +27,13 @@ class AudioRepositoryImpl @Inject constructor(
     )
 
     override fun streamPcmFrames(): Flow<ShortArray> = pcmFramesFlow
+
+    // ASR local stream no longer used; keep for backward-compat or remove if interface changed
     override fun asrPcmFrames(): Flow<ShortArray> = pcmFramesFlow
 
     override val sampleRate: Int get() = audioEngine.sampleRate
     override val channels: Int get() = audioEngine.channels
+    override val currentRecordingFilePath: String? get() = audioEngine.currentRecordingFilePath
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override fun startRecording() {

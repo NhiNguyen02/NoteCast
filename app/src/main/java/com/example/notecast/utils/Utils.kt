@@ -50,3 +50,9 @@ fun formatNoteDate(timestamp: Long): String {
         "${noteDay}, ${timeFormatter.format(date)}"
     }
 }
+
+fun formatTime(totalSeconds: Int): String {
+    val m = totalSeconds / 60
+    val s = totalSeconds % 60
+    return "%d:%02d".format(m, s)
+}

@@ -39,127 +39,105 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.example.notecast.domain.model.AsrResult
+import com.example.notecast.presentation.navigation.Screen
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.Red
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.viewmodel.ASRState
-import com.example.notecast.presentation.viewmodel.ASRViewModel
 import com.example.notecast.presentation.viewmodel.AudioViewModel
 import com.example.notecast.presentation.viewmodel.RecorderState
+import com.example.notecast.presentation.viewmodel.ASRViewModel
 import com.example.notecast.utils.formatElapsed
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private const val TAG_RECORDING = "RecordingScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordingScreen(
-    viewModel: AudioViewModel = hiltViewModel(),
+    navController: NavController,
+    audioViewModel: AudioViewModel = hiltViewModel(),
+    asrViewModel: ASRViewModel = hiltViewModel(),
     onClose: () -> Unit = {},
-    // Giữ callback cũ để trả transcript + info, nhưng UI mới chủ yếu quan tâm lưu note
-    onRecordingFinished: (transcript: String, audioFilePath: String?, durationMs: Long, sampleRate: Int, channels: Int) -> Unit = { _, _, _, _, _ -> },
 ) {
-    Log.d(TAG_RECORDING, "Composable entered")
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // observe state from ViewModel (giữ nguyên logic cũ)
-    val recorderState by viewModel.recorderState.collectAsState()
-    val durationMillis by viewModel.recordingDurationMillis.collectAsState()
-    val waveform by viewModel.waveform.collectAsState()
-    val vadState by viewModel.vadState.collectAsState()
-    val amplitude by viewModel.amplitude.collectAsState()
+    val recorderState by audioViewModel.recorderState.collectAsState()
+    val durationMillis by audioViewModel.recordingDurationMillis.collectAsState()
+    val waveform by audioViewModel.waveform.collectAsState()
+    val vadState by audioViewModel.vadState.collectAsState()
+    val amplitude by audioViewModel.amplitude.collectAsState()
 
-    val asrVm: ASRViewModel = hiltViewModel()
-    val asrState by asrVm.state.collectAsState()
+    val asrState: ASRState by asrViewModel.state.collectAsState()
 
-    val showProcessing = remember { mutableStateOf(false) }
-    val latestOnRecordingFinished by rememberUpdatedState(onRecordingFinished)
+    var showProcessing by remember { mutableStateOf(false) }
 
-    // use var with delegation so we can reassign within lambdas and LaunchedEffect
-    var isAsrInitialized by remember { mutableStateOf(false) }
-    var isInitializingAsr by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        Log.d(TAG_RECORDING, "attachAsrViewModel")
-        viewModel.attachAsrViewModel(asrVm)
-    }
-
-    // Khi ASR hoàn tất (Final) hoặc Error, ẩn dialog và điều hướng.
-    // KHÔNG tự bật dialog khi chỉ có ASRState.Processing trong lúc vẫn đang ghi âm.
     LaunchedEffect(asrState) {
-        Log.d(TAG_RECORDING, "ASR state changed: $asrState")
         when (val state = asrState) {
+            ASRState.Idle -> { showProcessing = false }
+            ASRState.Processing -> { showProcessing = true }
             is ASRState.Final -> {
-                Log.d(TAG_RECORDING, "ASR Final text length=${state.text.length}")
-                showProcessing.value = false
-                latestOnRecordingFinished(
-                    state.text,
-                    null,
-                    durationMillis,
-                    16_000,
-                    1,
+                showProcessing = false
+                asrViewModel.resetSession()
+
+                val dateLabel = android.text.format.DateFormat
+                    .format("yyyy-MM-dd", System.currentTimeMillis())
+                    .toString()
+
+                val result: AsrResult = state.result
+                val content = result.text
+
+                val chunksJson: String? = if (result.chunks.isNotEmpty()) {
+                    try {
+                        Json.encodeToString(result.chunks).also {
+                            Log.d(TAG_RECORDING, "Encoding chunks for nav: count=${result.chunks.size}, jsonLength=${it.length}")
+                        }
+                    } catch (t: Throwable) {
+                        Log.e(TAG_RECORDING, "Failed to encode chunksJson: ${t.message}", t)
+                        null
+                    }
+                } else null
+
+                Log.d(
+                    TAG_RECORDING,
+                    "Navigate to NoteDetail: textLength=${content.length}, hasChunks=${chunksJson != null}"
                 )
-                asrVm.resetSession()
-            }
 
+                navController.navigate(
+                    Screen.NoteDetail.createRoute(
+                        title = "Ghi chú ghi âm",
+                        date = dateLabel,
+                        content = content,
+                        chunksJson = chunksJson,
+                    )
+                ) {
+                    popUpTo(Screen.Recording.route) { inclusive = true }
+                }
+            }
             is ASRState.Error -> {
-                Log.e(TAG_RECORDING, "ASR Error: ${state.msg}")
-                showProcessing.value = false
+                showProcessing = false
                 Toast.makeText(context, state.msg, Toast.LENGTH_SHORT).show()
+                asrViewModel.resetSession()
             }
-
-            else -> Unit
         }
     }
-//    LaunchedEffect(asrState) {
-//        Log.d(TAG_RECORDING, "ASR state changed: $asrState")
-//        when (val state = asrState) {
-//            is ASRState.Final -> {
-//                showProcessing.value = false
-//
-//                val content = state.text.ifBlank {
-//                    "dạ thưa hội đồng em xin phép đi vào phần kết quả thực nghiệm của đề tài như thầy cô thấy trên biểu đồ mô hình đạt độ chính xác khoảng tám mươi tám phần trăm tuy nhiên khi test với dữ liệu bị nhiễu độ chính xác giảm xuống còn bảy mươi lăm phần trăm nguyên nhân chủ yếu là do bộ dữ liệu ban đầu chưa đa dạng giọng vùng miền em đã thử áp dụng kỹ thuật data augmentation để tăng cường dữ liệu kết quả sau cải thiện model đã nhận diện tốt hơn các từ đơn nhưng câu dài vẫn còn sai sót ứng dụng demo trên điện thoại chạy ổn định các tính năng cơ bản như đăng nhập còn phần xử lý thời gian thực vẫn còn độ trễ khoảng hai giây em sẽ tối ưu sau đó là toàn bộ kết quả của chương ba em xin cảm ơn thầy cô đã lắng nghe em xin mời quý thầy cô đặt câu hỏi phản biện ạ"
-//                }
-//
-//                latestOnRecordingFinished(
-//                    content,
-//                    null,
-//                    durationMillis,
-//                    16_000,
-//                    1,
-//                )
-//                asrVm.resetSession()
-//            }
-//            is ASRState.Error -> {
-//                Log.e(TAG_RECORDING, "ASR Error (suppressed to UI): ${state.msg}")
-//                showProcessing.value = false
-//            }
-//            else -> Unit
-//        }
-//    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        Log.d(TAG_RECORDING, "RECORD_AUDIO permission result: $isGranted")
         Toast.makeText(
             context,
             if (isGranted) "Quyền ghi âm đã được cấp" else "Quyền ghi âm bị từ chối",
             Toast.LENGTH_SHORT
         ).show()
         if (isGranted) {
-            if (showProcessing.value || isInitializingAsr) {
-                showProcessing.value = false
-                isInitializingAsr = false
-            }
-            Log.d(TAG_RECORDING, "startRecording after permission grant")
-            viewModel.startRecording()
-        } else {
-            showProcessing.value = false
-            isInitializingAsr = false
+            audioViewModel.startRecording()
         }
     }
 
@@ -168,53 +146,41 @@ fun RecordingScreen(
             context,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
-        Log.d(TAG_RECORDING, "startWithPermission hasPermission=$hasPermission")
-
-        if (!isAsrInitialized) {
-            isInitializingAsr = true
-            showProcessing.value = true
-        }
 
         if (hasPermission) {
-            if (!isAsrInitialized) {
-                coroutineScope.launch {
-                    Log.d(TAG_RECORDING, "First-time ASR init: waiting briefly before startRecording")
-                    delay(500)
-                    isAsrInitialized = true
-                    isInitializingAsr = false
-                    showProcessing.value = false
-                    Log.d(TAG_RECORDING, "First-time ASR init done, startRecording")
-                    viewModel.startRecording()
-                }
-            } else {
-                Log.d(TAG_RECORDING, "startRecording immediately (ASR already initialized)")
-                viewModel.startRecording()
-            }
+            audioViewModel.startRecording()
         } else {
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
-    // --------- UI state mới theo thiết kế cập nhật ---------
+    fun stopAndTranscribe() {
+        Log.d(TAG_RECORDING, "stopAndTranscribe: invoked, vmState=$recorderState, durationMs=$durationMillis")
+        coroutineScope.launch {
+            // suspend until stopRecordingUseCase & repository update are done
+            audioViewModel.stopRecording()
+            val path = audioViewModel.currentRecordingFilePath
+            Log.d(TAG_RECORDING, "stopAndTranscribe: path after stopRecording=${path}")
+            if (path == null) {
+                Log.e(TAG_RECORDING, "stopAndTranscribe: currentRecordingFilePath is null, show toast")
+                Toast.makeText(context, "Không tìm thấy file ghi âm", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            asrViewModel.transcribeRecordingFile(path)
+        }
+    }
+
     var showMenu by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
-
-    // VAD label thân thiện
-//    val vadLabel = when (vadState) {
-//        VadState.SILENT -> "Không có tiếng"
-//        VadState.SPEAKING -> "Có tiếng"
-//        else -> vadState.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
-//    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(brush = Background)
-//            .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { /* compact title, để trống cho tối giản */ },
+                title = { },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (recorderState == RecorderState.Recording || recorderState == RecorderState.Paused) {
@@ -250,7 +216,6 @@ fun RecordingScreen(
                             onDismissRequest = { showMenu = false },
                             offset = DpOffset(x = (-8).dp, y = 8.dp)
                         ) {
-                            // Hiện tại chỉ là placeholder UI, chưa gắn logic thư mục
                             DropdownMenuItem(
                                 text = { Text("Công việc") },
                                 onClick = { showMenu = false }
@@ -271,7 +236,6 @@ fun RecordingScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Timer + trạng thái
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -331,7 +295,6 @@ fun RecordingScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Waveform card với overlay info
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -345,28 +308,10 @@ fun RecordingScreen(
                     amplitude = amplitude,
                     modifier = Modifier.fillMaxSize()
                 )
-
-//                Column(
-//                    modifier = Modifier
-//                        .align(Alignment.TopStart)
-//                        .padding(8.dp)
-//                ) {
-//                    Text(
-//                        text = "Biên độ: ${"%.2f".format(amplitude)}",
-//                        color = Color.White,
-//                        fontSize = 12.sp
-//                    )
-//                    Text(
-//                        text = "VAD: $vadLabel",
-//                        color = Color.White,
-//                        fontSize = 12.sp
-//                    )
-//                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Bottom controls (fab + hint)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -421,7 +366,7 @@ fun RecordingScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             FloatingActionButton(
-                                onClick = { viewModel.pauseRecording() },
+                                onClick = { audioViewModel.pauseRecording() },
                                 modifier = Modifier
                                     .size(actionOuterSize)
                                     .shadow(8.dp, CircleShape),
@@ -440,14 +385,7 @@ fun RecordingScreen(
                             FloatingActionButton(
                                 onClick = {
                                     Log.d(TAG_RECORDING, "Stop & process clicked, durationMs=$durationMillis")
-                                    viewModel.stopRecording()
-                                    showProcessing.value = true
-                                    asrVm.finishSession(
-                                        audioFilePath = viewModel.currentRecordingFilePath ?: "", // TODO: real path when available
-                                        durationMs = durationMillis,
-                                        sampleRate = viewModel.sampleRate,
-                                        channels = viewModel.channels,
-                                    )
+                                    stopAndTranscribe()
                                 },
                                 modifier = Modifier
                                     .size(actionOuterSize)
@@ -474,7 +412,7 @@ fun RecordingScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             FloatingActionButton(
-                                onClick = { viewModel.resumeRecording() },
+                                onClick = { audioViewModel.resumeRecording() },
                                 modifier = Modifier
                                     .size(actionOuterSize)
                                     .shadow(8.dp, CircleShape),
@@ -493,14 +431,7 @@ fun RecordingScreen(
                             FloatingActionButton(
                                 onClick = {
                                     Log.d(TAG_RECORDING, "Stop & process clicked from Paused, durationMs=$durationMillis")
-                                    viewModel.stopRecording()
-                                    showProcessing.value = true
-                                    asrVm.finishSession(
-                                        audioFilePath = viewModel.currentRecordingFilePath ?: "", // TODO
-                                        durationMs = durationMillis,
-                                        sampleRate = viewModel.sampleRate,
-                                        channels = viewModel.channels,
-                                    )
+                                    stopAndTranscribe()
                                 },
                                 modifier = Modifier
                                     .size(actionOuterSize)
@@ -537,16 +468,8 @@ fun RecordingScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        if (showProcessing.value || isInitializingAsr) {
-            ProcessingDialog(
-                percent = 50,
-                step = 1,
-                details = if (isInitializingAsr) "Đang chuẩn bị mô hình nhận diện giọng nói..." else "Đang chuyển giọng nói thành văn bản...",
-                onDismissRequest = {
-                    showProcessing.value = false
-                    isInitializingAsr = false
-                }
-            )
+        if (showProcessing) {
+            ProcessingDialog(onDismissRequest = { }, percent = 0, step = 1)
         }
 
         if (showExitConfirm) {
@@ -556,9 +479,11 @@ fun RecordingScreen(
                 text = { Text("Bạn đang ghi âm, thoát ra sẽ mất đoạn ghi hiện tại.") },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel.stopRecording()
-                        showExitConfirm = false
-                        onClose()
+                        coroutineScope.launch {
+                            audioViewModel.stopRecording()
+                            showExitConfirm = false
+                            onClose()
+                        }
                     }) {
                         Text("Thoát")
                     }
