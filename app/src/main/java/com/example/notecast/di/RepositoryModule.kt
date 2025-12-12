@@ -4,12 +4,15 @@ import com.example.notecast.data.repository.FolderRepositoryImpl
 import com.example.notecast.data.repository.NoteRepositoryImpl
 import com.example.notecast.data.repository.PreferencesRepositoryImpl
 import com.example.notecast.data.repository.RecorderRepositoryImpl
+import com.example.notecast.data.repository.SummaryRepository
 import com.example.notecast.domain.repository.FolderRepository
 import com.example.notecast.domain.repository.NoteRepository
 import com.example.notecast.domain.repository.PreferencesRepository
 import com.example.notecast.domain.repository.RecorderRepository
+import com.example.notecast.domain.usecase.SummarizeNoteUseCase
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
@@ -22,23 +25,38 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindNoteRepository(
         impl: NoteRepositoryImpl
-    ): NoteRepository // Ràng buộc Interface và Implementation
+    ): NoteRepository
 
     @Binds
     @Singleton
     abstract fun bindFolderRepository(
         impl: FolderRepositoryImpl
-    ): FolderRepository // Ràng buộc Interface và Implementation
+    ): FolderRepository
 
     @Binds
     @Singleton
     abstract fun bindPreferencesRepository(
         impl: PreferencesRepositoryImpl
-    ): PreferencesRepository // Ràng buộc Interface và Implementation
+    ): PreferencesRepository
 
     @Binds
     @Singleton
     abstract fun bindRecorderRepository(
-        impl: RecorderRepositoryImpl // Trỏ đến file Impl mới sửa
+        impl: RecorderRepositoryImpl
     ): RecorderRepository
+
+    companion object {
+
+        @Provides
+        @Singleton
+        fun provideSummaryRepository(
+            apiService: com.example.notecast.data.remote.GeminiApiService
+        ): SummaryRepository = SummaryRepository(apiService)
+
+        @Provides
+        @Singleton
+        fun provideSummarizeNoteUseCase(
+            summaryRepository: SummaryRepository
+        ): SummarizeNoteUseCase = SummarizeNoteUseCase(summaryRepository)
+    }
 }

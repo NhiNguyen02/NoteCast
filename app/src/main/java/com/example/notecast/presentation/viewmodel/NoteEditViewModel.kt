@@ -1,4 +1,5 @@
-package com.example.notecast.presentation.viewmodel
+
+package com.example.notecast.presentation.ui.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -9,6 +10,7 @@ import com.example.notecast.domain.usecase.GenerateMindMapUseCase
 import com.example.notecast.domain.usecase.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.GetNoteByIdUseCase
 import com.example.notecast.domain.usecase.SaveNoteUseCase
+import com.example.notecast.domain.usecase.SummarizeNoteUseCase
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +31,7 @@ class NoteEditViewModel @Inject constructor(
     private val saveNoteUseCase: SaveNoteUseCase,
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
     private val generateMindMapUseCase: GenerateMindMapUseCase,
+    private val summarizeNoteUseCase: SummarizeNoteUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -127,12 +130,32 @@ class NoteEditViewModel @Inject constructor(
                     )
                 }
             }
-            // --- XỬ LÝ AI (GIẢ LẬP) ---
+            // --- XỬ LÝ AI: TÓM TẮT (thực tế, gọi use case) ---
             is NoteEditEvent.OnSummarize -> {
-                simulateAiProcess(
-                    onStart = { _state.update { it.copy(isSummarizing = true) } },
-                    onEnd = { _state.update { it.copy(isSummarizing = false, content = it.content + "\n\n[Tóm tắt]: Nội dung đã được tóm tắt.") } }
-                )
+                // Prevent duplicate calls
+                if (_state.value.isSummarizing) return
+
+                viewModelScope.launch {
+                    _state.update { it.copy(isSummarizing = true, error = null) }
+                    try {
+                        val contentToSummarize = _state.value.content
+                        val summary = summarizeNoteUseCase(contentToSummarize)
+                        // Append summary to content (keeps original). Adjust as needed.
+                        _state.update {
+                            it.copy(
+                                isSummarizing = false,
+                                content = it.content + "\n\n[Tóm tắt]:\n" + summary
+                            )
+                        }
+                    } catch (e: Exception) {
+                        _state.update {
+                            it.copy(
+                                isSummarizing = false,
+                                error = "Lỗi tóm tắt: ${e.message ?: "Không xác định"}"
+                            )
+                        }
+                    }
+                }
             }
             is NoteEditEvent.OnNormalize -> {
                 simulateAiProcess(

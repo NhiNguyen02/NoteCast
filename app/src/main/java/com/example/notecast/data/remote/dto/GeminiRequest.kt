@@ -1,13 +1,12 @@
 package com.example.notecast.data.remote.dto
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 // --- REQUEST (Gửi đi) ---
 @Serializable
 data class GeminiRequest(
     val contents: List<GeminiContent>,
-    val generationConfig: GeminiConfig = GeminiConfig()
+    val generationConfig: GeminiConfig? = null   // <— Cho phép null để tuỳ use-case
 )
 
 @Serializable
@@ -21,7 +20,7 @@ data class GeminiPart(val text: String)
 
 @Serializable
 data class GeminiConfig(
-    val responseMimeType: String = "application/json"
+    val responseMimeType: String? = null         // <— Cho phép override
 )
 
 // --- RESPONSE (Nhận về) ---
