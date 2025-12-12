@@ -1,6 +1,7 @@
 package com.example.notecast.presentation.ui.noteeditscreen
 
 import com.example.notecast.domain.model.Folder
+import com.example.notecast.domain.model.MindMapNode
 import com.example.notecast.domain.model.ProcessedTextData
 
 /**
@@ -32,8 +33,8 @@ data class NoteEditState(
     val isSummarizing: Boolean = false,
     val isNormalizing: Boolean = false,
     val isGeneratingMindMap: Boolean = false,
+    val mindMapData: MindMapNode? = null,
     val showMindMapDialog: Boolean = false,
-
 
     val processedTextData: ProcessedTextData? = null, // Lưu kết quả NLP (Keywords, Sentences) tạm thời
     val processingPercent: Int = 0,

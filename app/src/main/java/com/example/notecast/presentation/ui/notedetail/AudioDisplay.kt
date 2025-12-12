@@ -53,21 +53,20 @@ fun AudioDisplay(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFF3EEFF))
-            .border(BorderStroke(1.dp, Color(0xFFEEE9FB)), RoundedCornerShape(14.dp))
-            .padding(16.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(0.5f))
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                "File âm thanh",
-                style = TextStyle(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF5D1AAE)
-                )
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+//            Text(
+//                "File âm thanh",
+//                style = TextStyle(
+//                    fontSize = 16.sp,
+//                    fontWeight = FontWeight.SemiBold,
+//                    color = Color(0xFF5D1AAE)
+//                )
+//            )
+//            Spacer(modifier = Modifier.height(12.dp))
 
             // Controls row (prev / big play / next)
             Row(

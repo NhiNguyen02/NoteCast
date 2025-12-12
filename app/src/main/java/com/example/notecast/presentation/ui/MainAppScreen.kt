@@ -24,13 +24,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.notecast.navigation.Screen
+import com.example.notecast.domain.model.Note
+import com.example.notecast.presentation.navigation.Screen
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.ui.common_components.AppDrawerContent
 import com.example.notecast.presentation.ui.dialog.CreateNoteDialog
 import com.example.notecast.presentation.ui.folderscreen.FolderScreen
 import com.example.notecast.presentation.ui.homescreen.HomeScreen
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
+import com.example.notecast.presentation.ui.notedetail.NoteDetailTextScreen
 import com.example.notecast.presentation.ui.record.RecordingScreen
 import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
 import kotlinx.coroutines.launch
@@ -103,8 +105,19 @@ fun MainAppScreen() {
                     HomeScreen(
                         drawerState = drawerState,
                         onOpenCreateDialog = { showCreateDialog = true },
-                        onNoteClick = { noteId ->
-                            appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
+                        onNoteClick = { note: Note ->
+                            when (note.noteType) {
+                                "TEXT" -> {
+                                    appNavController.navigate(Screen.NoteEdit.createRoute(note.id))
+                                }
+                                "VOICE" -> {
+                                    appNavController.navigate(Screen.NoteDetailText.createRoute(note.id))
+                                }
+                                else -> {
+                                    // fallback: treat unknown as TEXT
+                                    appNavController.navigate(Screen.NoteEdit.createRoute(note.id))
+                                }
+                            }
                         }
                     )
                 }
@@ -146,6 +159,16 @@ fun MainAppScreen() {
                     )
                 }
 
+                // 6. Màn hình chi tiết ghi chú dạng text+audio
+                composable(
+                    route = Screen.NoteDetailText.routeWithArgs,
+                    arguments = Screen.NoteDetailText.arguments
+                ) {
+                    NoteDetailTextScreen(
+                        onBack = { appNavController.popBackStack() }
+                    )
+                }
+
                 // Placeholder
                 composable(Screen.Notifications.route) { PlaceholderScreen("Thông báo") }
             }
@@ -158,7 +181,7 @@ fun MainAppScreen() {
                         showCreateDialog = false
                         when (type) {
                             "record" -> appNavController.navigate(Screen.Recording.route)
-                            "text" -> { appNavController.navigate(route = Screen.NoteEdit.createRoute(0)) }
+                            "text" -> { appNavController.navigate(route = Screen.NoteEdit.createRoute("0")) }
                         }
                     },
                     startAutoSummary = true

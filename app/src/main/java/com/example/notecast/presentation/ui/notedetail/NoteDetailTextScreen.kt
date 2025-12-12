@@ -1,8 +1,7 @@
 package com.example.notecast.presentation.ui.notedetail
 
-import androidx.compose.foundation.BorderStroke
+import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +27,12 @@ import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
 import kotlinx.coroutines.delay
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.MediaItem
+import androidx.compose.ui.platform.LocalContext
+import com.example.notecast.presentation.ui.common_components.NoteInfoAndActions
+import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
+import com.example.notecast.utils.formatNoteDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +46,61 @@ fun NoteDetailTextScreen(
     val title = state.title
     val content = state.content
     val chunks = state.chunks
-    val folderName = state.folderName
+    val folderId = state.folderId
     val availableFolders = state.availableFolders
+
+    // --- Audio info from DB ---
+    val filePath = state.filePath
+    val durationMs = state.durationMs ?: 0L
+    val totalSeconds = remember(durationMs) { ((durationMs.coerceAtLeast(0L)) / 1000L).toInt() }
+    val hasValidAudio = !filePath.isNullOrBlank() && totalSeconds > 0
+
+    // --- ExoPlayer instance tied to this screen & filePath ---
+    val context = LocalContext.current
+    val player: ExoPlayer? = remember(filePath) {
+        if (filePath.isNullOrBlank()) null
+        else ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(filePath))
+            prepare()
+        }
+    }
+
+    DisposableEffect(player) {
+        onDispose { player?.release() }
+    }
+
+    // Player-backed UI state
+    var isPlaying by remember { mutableStateOf(false) }
+    var progress by remember { mutableFloatStateOf(0f) } // 0f..1f
+
+    // Reset when note or file changes
+    LaunchedEffect(state.noteId, filePath) {
+        isPlaying = false
+        progress = 0f
+    }
+
+    // Sync isPlaying & progress with ExoPlayer
+    LaunchedEffect(player, durationMs) {
+        if (player == null) return@LaunchedEffect
+        while (true) {
+            delay(200L)
+            val d = player.duration.takeIf { it > 0 } ?: durationMs
+            if (d > 0) {
+                val ratio = (player.currentPosition.toFloat() / d.toFloat()).coerceIn(0f, 1f)
+                progress = ratio
+            }
+            isPlaying = player.isPlaying
+
+            // Nếu player đã đến cuối nhưng isPlaying vẫn false, đảm bảo progress = 1f
+            if (!player.isPlaying && player.playbackState == ExoPlayer.STATE_ENDED) {
+                progress = 1f
+            }
+        }
+    }
+
+    LaunchedEffect(filePath, durationMs) {
+        Log.d("NoteDetailTextScreen", "Loaded audio: filePath=$filePath, durationMs=$durationMs")
+    }
 
     val horizontalPadding = 16.dp
 
@@ -58,28 +116,9 @@ fun NoteDetailTextScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    // AUDIO demo state (for preview/demo; replace with real player state)
-    var isPlaying by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0.42f) } // 0..1
-    val totalSeconds = 347
-
-    // demo progress increment while playing; safe because it only runs if isPlaying true
-    LaunchedEffect(isPlaying) {
-        if (isPlaying) {
-            while (isPlaying) {
-                delay(250L)
-                progress = (progress + 0.004f).coerceAtMost(1f)
-                if (progress >= 1f) {
-                    isPlaying = false
-                    break
-                }
-            }
-        }
-    }
-
-    // heights (kept as you requested)
+    // heights
     val contentCardHeight = 520.dp
-    val transcriptCardHeight = 460.dp // changed to 460 as requested
+    val transcriptCardHeight = 460.dp
 
     // result card state (shown after pressing Tóm tắt)
     var showResultCard by remember { mutableStateOf(false) }
@@ -89,37 +128,41 @@ fun NoteDetailTextScreen(
         showResultCard = false
     }
 
-    // LazyColumn state + coroutine scope for auto-scroll to result (nếu sau này dùng lại)
     val listState = rememberLazyListState()
-//    val coroutineScope = rememberCoroutineScope()
 
-    // Scaffold keeps bottomBar fixed; show it only on Văn bản tab (selectedTab == 0)
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
+//            NoteDetailHeader(
+//                title = title,
+//                onTitleChange = { viewModel.onTitleChanged(it) },
+//                tagBg = tagBg,
+//                tagBorder = tagBorder,
+//                tagText = tagText,
+//                gradientMiddle = gradientMiddle,
+//                onBack = onBack,
+//            )
             NoteDetailHeader(
-                title = title,
-                onTitleChange = { viewModel.onTitleChanged(it) },
-                tagBg = tagBg,
-                tagBorder = tagBorder,
-                tagText = tagText,
-                gradientMiddle = gradientMiddle,
+                folderId = folderId,
+                availableFolders = availableFolders,
+                onFolderSelected = { folder -> viewModel.onFolderSelected(folder) },
+                onSaveClick = {viewModel.onSaveNote()},
                 onBack = onBack,
             )
         },
-        bottomBar = {
-            if (selectedTab == 0) {
-                NoteDetailBottomActions(
-                    onNormalize = { viewModel.onNormalizeClicked() },
-                    onSaveNote = { viewModel.onSaveNote() },
-                    onSummarize = { viewModel.onSummarizeClicked() },
-                    hasMindMap = state.mindMap != null,
-                    onGenerateOrShowMindMap = { viewModel.onGenerateMindMapClicked() },
-                )
-            } else {
-                Spacer(modifier = Modifier.height(0.dp))
-            }
-        },
+//        bottomBar = {
+//            if (selectedTab == 0) {
+//                NoteDetailBottomActions(
+//                    onNormalize = { viewModel.onNormalizeClicked() },
+//                    onSaveNote = { viewModel.onSaveNote() },
+//                    onSummarize = { viewModel.onSummarizeClicked() },
+//                    hasMindMap = state.mindMap != null,
+//                    onGenerateOrShowMindMap = { viewModel.onGenerateMindMapClicked() },
+//                )
+//            } else {
+//                Spacer(modifier = Modifier.height(0.dp))
+//            }
+//        },
         containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
@@ -128,35 +171,79 @@ fun NoteDetailTextScreen(
                 .padding(paddingValues)
                 .background(Background)
         ) {
-            Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
-            // Folder selection row (giống NoteEditScreen -> NoteInfoAndActions)
-            Box(
+//            Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
+//            // Folder selection row (giống NoteEditScreen -> NoteInfoAndActions)
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//            ) {
+//                FolderSelectionButton(
+//                    currentFolderId = folderId,
+//                    availableFolders = availableFolders,
+//                    onFolderSelected = { folder -> viewModel.onFolderSelected(folder) }
+//                )
+//            }
+            // Divider + Tabs (fixed)
+            HorizontalDivider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth())
+            NoteInfoAndActions(
+                isProcessing = state.isSummarizing,
+                isNormalizing = state.isNormalizing,
+                hasMindMap = state.mindMap != null,
+                onSummarize = { viewModel.onSummarizeClicked() },
+                onNormalize = { viewModel.onNormalizeClicked() },
+                onMindMap = { viewModel.onGenerateMindMapClicked() }
+            )
+            HorizontalDivider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth())
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .padding(16.dp),
             ) {
-                FolderSelectionButton(
-                    currentFolderName = folderName,
-                    availableFolders = availableFolders,
-                    onFolderSelected = { folder -> viewModel.onFolderSelected(folder) }
+                // --- Ô nhập Tiêu đề ---
+                BasicTextField(
+                    value = state.title,
+                    onValueChange = { newTitle ->
+                        viewModel.onTitleChanged(newTitle)
+                    },
+                    textStyle = TextStyle(
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    ),
+                    decorationBox = { innerTextField ->
+                        if (state.title.isEmpty()) {
+                            Text(
+                                "Tiêu đề...",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray.copy(alpha = 0.5f)
+                            )
+                        }
+                        innerTextField()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 5.dp)
+                )
+                Text(
+                    text = formatNoteDate(state.updatedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
                 )
             }
-            // Divider + Tabs (fixed)
-            HorizontalDivider(color = headerDividerColor, thickness = 1.dp, modifier = Modifier.fillMaxWidth())
+            HorizontalDivider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(14.dp))
-
-            Row(modifier = Modifier.padding(horizontal = horizontalPadding)) {
+            Row(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Column(modifier = Modifier.padding(end = 24.dp).clickable { selectedTab = 0 }) {
-                    Text("Văn bản", style = TextStyle(fontSize = 14.sp, fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Medium, color = if (selectedTab == 0) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)))
+                    Text("Văn bản", style = TextStyle(fontSize = 14.sp, fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Medium, color = if (selectedTab == 0) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)))
                     Spacer(modifier = Modifier.height(6.dp))
                     if (selectedTab == 0) Box(modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp)).background(gradientBottom))
                 }
                 Column(modifier = Modifier.padding(end = 24.dp).clickable { selectedTab = 1 }) {
-                    Text("Âm thanh", style = TextStyle(fontSize = 14.sp, fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Medium, color = if (selectedTab == 1) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)))
+                    Text("Âm thanh", style = TextStyle(fontSize = 14.sp, fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Medium, color = if (selectedTab == 1) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)))
                     Spacer(modifier = Modifier.height(6.dp))
                     if (selectedTab == 1) Box(modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp)).background(gradientBottom))
                 }
             }
-
             // CONTENT (scrollable area only). Pass scaffold paddingValues as contentPadding so LazyColumn
             // respects bottomBar height (prevents content from extending under bottom bar).
             LazyColumn(
@@ -164,68 +251,59 @@ fun NoteDetailTextScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 12.dp)
+                contentPadding = PaddingValues(12.dp)
             ) {
                 item {
                     if (selectedTab == 0) {
-                        // FIX: use fixed-height Box with inner verticalScroll
+                        // Simple non-scrollable card; LazyColumn handles scrolling
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(contentCardHeight)
-                                .padding(horizontal = horizontalPadding)
+                                .fillMaxSize()
                                 .clip(RoundedCornerShape(12.dp))
+                                .weight(1f)
                                 .background(Color.White.copy(0.5f))
                                 .padding(horizontal = 20.dp, vertical = 12.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
-                            ) {
-                                Text(
-                                    "Nội dung",
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF5D1AAE)
-                                    )
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                BasicTextField(
-                                    value = content,
-                                    onValueChange = { viewModel.onContentChanged(it) },
-                                    textStyle = TextStyle(
-                                        fontSize = 14.sp,
-                                        color = Color(0xFF222222),
-                                        lineHeight = 20.sp,
-                                        textAlign = TextAlign.Justify
-                                    ),
-                                    decorationBox = { innerTextField ->
-                                        if (content.isEmpty()) {
-                                            Text(
-                                                "Chỉnh sửa nội dung ghi chú...",
-                                                fontSize = 14.sp,
-                                                color = Color.Gray.copy(alpha = 0.5f)
-                                            )
-                                        }
-                                        innerTextField()
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
+                            BasicTextField(
+                                value = content,
+                                onValueChange = { viewModel.onContentChanged(it) },
+                                textStyle = TextStyle(
+                                    fontSize = 16.sp,
+                                    color = Color.Black,
+                                    textAlign = TextAlign.Justify
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (content.isEmpty()) {
+                                        Text(
+                                            "Chỉnh sửa nội dung ghi chú...",
+                                            fontSize = 16.sp,
+                                            color = Color.Gray.copy(alpha = 0.5f)
+                                        )
+                                    }
+                                    innerTextField()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     } else {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = horizontalPadding)
                         ) {
                             AudioDisplay(
-                                isPlaying = isPlaying,
-                                onTogglePlay = { isPlaying = !isPlaying },
-                                progress = progress,
-                                totalSeconds = totalSeconds,
+                                isPlaying = isPlaying && hasValidAudio,
+                                onTogglePlay = {
+                                    if (hasValidAudio && player != null) {
+                                        if (player.isPlaying) {
+                                            player.pause()
+                                        } else {
+                                            player.playWhenReady = true
+                                            player.play()
+                                        }
+                                    }
+                                },
+                                progress = if (hasValidAudio) progress else 0f,
+                                totalSeconds = if (hasValidAudio) totalSeconds else 0,
                                 gradientTop = gradientTop,
                                 gradientMiddle = gradientMiddle,
                             )
@@ -234,7 +312,6 @@ fun NoteDetailTextScreen(
 
                             TranscriptionDisplay(
                                 chunks = chunks,
-                                transcriptCardHeight = transcriptCardHeight,
                             )
                         }
                     }

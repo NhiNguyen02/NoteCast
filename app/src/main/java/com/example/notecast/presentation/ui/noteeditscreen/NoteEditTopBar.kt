@@ -1,5 +1,6 @@
 package com.example.notecast.presentation.ui.noteeditscreen
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -18,14 +19,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.notecast.R
+import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.Purple
+import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
 
 // --- Composable: Top AppBar tùy chỉnh ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteEditTopBar(
     onBackClick: () -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: () -> Unit,
+    folderId: String?,
+    availableFolders: List<Folder>,
+    onFolderSelected: (Folder?) -> Unit
 ) {
     TopAppBar(
         title = {
@@ -41,14 +47,19 @@ fun NoteEditTopBar(
             }
         },
         actions = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FolderSelectionButton(
+                    currentFolderId = folderId,
+                    availableFolders = availableFolders,
+                    onFolderSelected = onFolderSelected
+                )
                 // Nút Lưu
                 IconButton(onClick = onSaveClick) {
                     Icon(
                         painter = painterResource(R.drawable.save), // Đảm bảo bạn có icon này
                         contentDescription = "Lưu",
                         tint = Purple,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }

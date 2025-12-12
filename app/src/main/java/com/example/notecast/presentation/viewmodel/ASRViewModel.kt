@@ -32,16 +32,13 @@ sealed class ASRState {
 class ASRViewModel @Inject constructor(
     private val transcribeRecordingUseCase: TranscribeRecordingUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
-    ) : ViewModel() {
+) : ViewModel() {
 
     private val _state = MutableStateFlow<ASRState>(ASRState.Idle)
     val state: StateFlow<ASRState> = _state.asStateFlow()
 
     private val _transcript = MutableStateFlow("")
     val transcript: StateFlow<String> = _transcript.asStateFlow()
-
-    private val _lastSavedNoteId = MutableStateFlow<String?>(null)
-    val lastSavedNoteId: StateFlow<String?> = _lastSavedNoteId.asStateFlow()
 
 
     /**
@@ -95,34 +92,33 @@ class ASRViewModel @Inject constructor(
     fun resetSession() {
         _transcript.value = ""
         _state.value = ASRState.Idle
+        // lastSavedNoteId is removed; session reset only clears transcript & state
     }
 
-    fun saveVoiceNote(
+    suspend fun saveVoiceNoteAndReturnId(
         title: String,
         transcript: String,
         chunksJson: String?,
         audioFilePath: String,
         durationMs: Long?,
         folderId: String? = null,
-    ) {
-        viewModelScope.launch {
-            val noteId = UUID.randomUUID().toString()
-            val note = Note(
-                id = noteId,                 // để SaveNoteUseCase tự sinh UUID
-                noteType = "VOICE",
-                title = title,
-                content = transcript,
-                rawText = transcript,
-                timestampsJson = chunksJson,
-                filePath = audioFilePath,
-                durationMs = durationMs,
-                createdAt = 0L,         // để UseCase set now
-                updatedAt = 0L,
-                folderId = folderId,
-                // các field khác để default
-            )
-            saveNoteUseCase(note)
-            _lastSavedNoteId.value = noteId
-        }
+    ): String {
+        val noteId = UUID.randomUUID().toString()
+        val note = Note(
+            id = noteId,
+            noteType = "VOICE",
+            title = title,
+            content = transcript,
+            rawText = transcript,
+            timestampsJson = chunksJson,
+            filePath = audioFilePath,
+            durationMs = durationMs,
+            createdAt = 0L,
+            updatedAt = 0L,
+            folderId = folderId,
+        )
+        saveNoteUseCase(note)
+        Log.d(TAG_ASR, "Voice note saved, returning noteId=$noteId")
+        return noteId
     }
 }

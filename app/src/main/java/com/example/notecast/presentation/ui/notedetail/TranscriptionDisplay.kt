@@ -27,22 +27,20 @@ import com.example.notecast.utils.formatTime
 @Composable
 fun TranscriptionDisplay(
     chunks: List<com.example.notecast.domain.model.ChunkResult>,
-    transcriptCardHeight: Dp,
+//    transcriptCardHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .height(transcriptCardHeight)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFF3EEFF))
-            .border(BorderStroke(1.dp, Color(0x33B96CFF)), RoundedCornerShape(14.dp))
-            .padding(16.dp)
+            .fillMaxSize()
+//            .height(transcriptCardHeight)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(0.5f))
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
         ) {
             Text(
                 "Bản chép lời",

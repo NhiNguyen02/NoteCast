@@ -21,18 +21,27 @@ import androidx.compose.ui.unit.sp
 import com.example.notecast.R
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.PrimaryAccent
-import android.graphics.Color as AndroidColor
+import androidx.core.graphics.toColorInt
 
 /**
  * Component hiển thị nút chọn thư mục và menu xổ xuống.
  */
 @Composable
 fun FolderSelectionButton(
-    currentFolderName: String,
+    currentFolderId: String?,
     availableFolders: List<Folder>,
     onFolderSelected: (Folder?) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+
+    // Lấy folder hiện tại theo id (Option A)
+    val currentFolder = remember(currentFolderId, availableFolders) {
+        availableFolders.firstOrNull { it.id == currentFolderId }
+    }
+
+    val currentFolderName = currentFolder?.name ?: "Chưa phân loại"
+    // Dùng helper getComposeColor() từ domain model để không lặp logic
+    val currentFolderColor: Color = currentFolder?.getComposeColor() ?: Color(0xFFCCA8FF)
 
     Box {
         // 1. CHIP HIỂN THỊ
@@ -40,7 +49,7 @@ fun FolderSelectionButton(
             leadingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.folder_outline),
-                    tint = Color.White,
+                    tint = currentFolderColor,
                     contentDescription = "folder",
                     modifier = Modifier.size(20.dp)
                 )
@@ -48,8 +57,10 @@ fun FolderSelectionButton(
             onClick = { expanded = true },
             label = { Text(currentFolderName, fontSize = 14.sp) },
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = Color(0xffCCA8FF),
-                labelColor = Color.White
+                containerColor = currentFolderColor.copy(alpha = 0.15f),
+                labelColor = currentFolderColor,
+                leadingIconContentColor = currentFolderColor.copy(alpha = 0.5f),
+                trailingIconContentColor = currentFolderColor.copy(alpha = 0.5f)
             ),
             shape = RoundedCornerShape(8.dp),
             border = null
@@ -84,10 +95,7 @@ fun FolderSelectionButton(
 
             // --- DANH SÁCH THƯ MỤC ---
             availableFolders.forEach { folder ->
-                val folderColor = try {
-                    if (folder.colorHex.isNullOrBlank()) PrimaryAccent
-                    else Color(AndroidColor.parseColor(folder.colorHex))
-                } catch (e: Exception) { PrimaryAccent }
+                val folderColor = folder.getComposeColor()
 
                 FolderDropdownItem(
                     name = folder.name,

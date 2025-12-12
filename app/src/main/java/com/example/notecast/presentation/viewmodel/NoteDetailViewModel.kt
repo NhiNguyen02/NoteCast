@@ -12,7 +12,6 @@ import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.notefolder.GetNoteByIdUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
-import com.example.notecast.presentation.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,11 +22,9 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.net.URLDecoder
 import java.util.UUID
 import javax.inject.Inject
 
-private const val TAG_NOTE_DETAIL = "NoteDetailVM"
 
 /**
  * ViewModel cho NoteDetailTextScreen
@@ -40,9 +37,10 @@ class NoteDetailViewModel @Inject constructor(
     private val saveNoteUseCase: SaveNoteUseCase,
     private val generateMindMapUseCase: GenerateMindMapUseCase,
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
-    private val getNoteByIdUseCase: GetNoteByIdUseCase,
+    getNoteByIdUseCase: GetNoteByIdUseCase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    private val TAG_NOTE_DETAIL = "NoteDetailVM"
 
     data class UiState(
         val noteId: String? = null,
@@ -58,6 +56,12 @@ class NoteDetailViewModel @Inject constructor(
         val folderId: String? = null,
         val folderName: String = "Chưa phân loại",
         val availableFolders: List<Folder> = emptyList(),
+        // Audio info
+        val filePath: String? = null,
+        val durationMs: Long? = null,
+        // Transcript gốc (raw)
+        val rawText: String? = null,
+        val timestampsJson: String? = null,
         // Mindmap
         val isNormalizing: Boolean = false,
         val isSummarizing: Boolean = false,
@@ -75,60 +79,9 @@ class NoteDetailViewModel @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     init {
-        val rawNoteId: String = savedStateHandle[Screen.NoteDetail.noteIdArg] ?: ""
-        val rawTitle: String = savedStateHandle[Screen.NoteDetail.titleArg] ?: "Ghi chú ghi âm"
-        val rawDate: String = savedStateHandle[Screen.NoteDetail.dateArg] ?: ""
-        val rawContent: String = savedStateHandle[Screen.NoteDetail.contentArg] ?: ""
-        val rawChunksJson: String = savedStateHandle[Screen.NoteDetail.chunksArg] ?: ""
-
-        Log.d(TAG_NOTE_DETAIL, "Nav args: noteId='${rawNoteId}', title='${rawTitle}', date='${rawDate}', contentLength=${rawContent.length}, chunksJsonLength=${rawChunksJson.length}")
-
-        val noteIdArg = rawNoteId.takeIf { it.isNotBlank() }
-        val titleArg = try { URLDecoder.decode(rawTitle, "UTF-8") } catch (e: Exception) {
-            Log.e(TAG_NOTE_DETAIL, "Failed to decode title: ${e.message}", e)
-            rawTitle
-        }
-        val dateArg = try { URLDecoder.decode(rawDate, "UTF-8") } catch (e: Exception) {
-            Log.e(TAG_NOTE_DETAIL, "Failed to decode date: ${e.message}", e)
-            rawDate
-        }
-        val contentArg = try { URLDecoder.decode(rawContent, "UTF-8") } catch (e: Exception) {
-            Log.e(TAG_NOTE_DETAIL, "Failed to decode content: ${e.message}", e)
-            rawContent
-        }
-        val chunksJsonEncoded = try { URLDecoder.decode(rawChunksJson, "UTF-8") } catch (e: Exception) {
-            Log.e(TAG_NOTE_DETAIL, "Failed to decode chunksJson: ${e.message}", e)
-            rawChunksJson
-        }
-
-        val chunks = if (chunksJsonEncoded.isNotBlank()) {
-            try {
-                val list = json.decodeFromString<List<ChunkResult>>(chunksJsonEncoded)
-                Log.d(TAG_NOTE_DETAIL, "Decoded chunks from nav args: count=${list.size}")
-                list
-            } catch (e: Exception) {
-                Log.e(TAG_NOTE_DETAIL, "Failed to parse chunksJson: ${e.message}", e)
-                emptyList()
-            }
-        } else {
-            Log.d(TAG_NOTE_DETAIL, "chunksJsonEncoded is blank, no chunks provided")
-            emptyList()
-        }
-
-        val inferredType = "VOICE"
-
-        _uiState.update {
-            it.copy(
-                noteId = noteIdArg,
-                title = titleArg,
-                date = dateArg,
-                content = contentArg,
-                chunks = chunks,
-                noteType = inferredType,
-            )
-        }
-
-        loadFolders()
+        // Lấy noteId từ route NoteDetailText: "note_detail_text/{noteId}"
+        val noteIdArg: String? = savedStateHandle["noteId"]
+        Log.d(TAG_NOTE_DETAIL, "Init NoteDetailViewModel with noteId='$noteIdArg'")
 
         if (noteIdArg != null) {
             getNoteByIdUseCase(noteIdArg).onEach { note ->
@@ -139,13 +92,20 @@ class NoteDetailViewModel @Inject constructor(
                         } catch (_: Exception) { null }
                     } else null
 
+                    // Parse timestampsJson -> chunks
+                    val parsedChunks: List<ChunkResult> = note.timestampsJson
+                        ?.let { rawJson ->
+                            try {
+                                json.decodeFromString<List<ChunkResult>>(rawJson)
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
+                        } ?: emptyList()
+
                     _uiState.update { state ->
                         state.copy(
-                            // giữ lại title/content từ nav nếu bạn muốn ưu tiên UI hiện tại,
-                            // hoặc override bằng note.title/note.content nếu muốn sync tuyệt đối
-                            title = state.title.ifBlank { note.title },
-                            content = state.content.ifBlank { note.content.orEmpty() },
-
+                            title = note.title,
+                            content = note.content.orEmpty(),
                             noteId = note.id,
                             noteType = note.noteType,
                             createdAt = note.createdAt,
@@ -154,11 +114,18 @@ class NoteDetailViewModel @Inject constructor(
                             pinTimestamp = note.pinTimestamp,
                             folderId = note.folderId,
                             mindMap = savedMindMap ?: state.mindMap,
+                            filePath = note.filePath,
+                            durationMs = note.durationMs,
+                            rawText = note.rawText,
+                            timestampsJson = note.timestampsJson,
+                            chunks = parsedChunks,
                         )
                     }
                 }
             }.launchIn(viewModelScope)
         }
+
+        loadFolders()
     }
 
     private fun loadFolders() {

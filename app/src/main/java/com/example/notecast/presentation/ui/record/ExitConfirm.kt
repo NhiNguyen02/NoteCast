@@ -7,7 +7,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExitConfirm(

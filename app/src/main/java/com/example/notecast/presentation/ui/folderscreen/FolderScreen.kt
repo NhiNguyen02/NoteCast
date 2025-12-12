@@ -1,6 +1,5 @@
 package com.example.notecast.presentation.ui.folderscreen
 
-import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +32,7 @@ import com.example.notecast.presentation.viewmodel.FolderViewModel
 import com.example.notecast.presentation.ui.common_components.NoteCard
 // Import NoteSelectionBar (nếu bạn để ở homescreen package)
 import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,8 +75,8 @@ fun FolderScreen(
     fun hexToColor(hex: String?): Color {
         return try {
             if (hex.isNullOrBlank()) FolderColors.first()
-            else Color(AndroidColor.parseColor(hex))
-        } catch (e: Exception) { FolderColors.first() }
+            else Color(hex.toColorInt())
+        } catch (_: Exception) { FolderColors.first() }
     }
 
     Scaffold(

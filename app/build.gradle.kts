@@ -123,4 +123,8 @@ dependencies {
 
     // Cloudinary Android SDK for media uploads
     implementation("com.cloudinary:cloudinary-android:3.1.2")
+
+    // Media3 ExoPlayer for audio playback
+    implementation("androidx.media3:media3-exoplayer:1.8.0")
+    implementation("androidx.media3:media3-ui:1.8.0")
 }

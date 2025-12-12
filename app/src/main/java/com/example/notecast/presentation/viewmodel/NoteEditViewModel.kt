@@ -1,6 +1,5 @@
 package com.example.notecast.presentation.viewmodel
 
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,8 +11,8 @@ import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
-import com.example.notecast.domain.usecase.NormalizationResult
-import com.example.notecast.domain.usecase.NormalizeNoteUseCase
+import com.example.notecast.domain.usecase.postprocess.NormalizationResult
+import com.example.notecast.domain.usecase.postprocess.NormalizeNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

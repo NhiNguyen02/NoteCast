@@ -1,48 +1,28 @@
 package com.example.notecast.presentation.ui.noteeditscreen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBackIos
-import androidx.compose.material.icons.outlined.AutoFixHigh
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Pageview
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import android.graphics.Color as AndroidColor
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.notecast.R
-import com.example.notecast.domain.model.Folder
-import com.example.notecast.presentation.theme.PopUpBackgroundBrush
-import com.example.notecast.presentation.theme.PrimaryAccent
-import com.example.notecast.presentation.theme.Purple
-import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
+import com.example.notecast.presentation.ui.common_components.NoteInfoAndActions
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.viewmodel.NoteEditViewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.notecast.utils.formatNoteDate
 
 /**
  * Màn hình Sửa/Tạo Ghi chú (Đã kết nối ViewModel thật)
@@ -68,7 +48,12 @@ fun NoteEditScreen(
             NoteEditTopBar(
                 onBackClick = onNavigateBack,
                 // Nút Lưu gọi sự kiện OnSaveNote
-                onSaveClick = { viewModel.onEvent(NoteEditEvent.OnSaveNote) }
+                onSaveClick = { viewModel.onEvent(NoteEditEvent.OnSaveNote) },
+                folderId = state.folderId,
+                availableFolders = state.availableFolders,
+                onFolderSelected = { folder ->
+                    viewModel.onEvent(NoteEditEvent.OnFolderSelected(folder))
+                }
             )
         },
         containerColor = Color.Transparent
@@ -89,14 +74,9 @@ fun NoteEditScreen(
 
                 // Các nút chức năng (Tóm tắt, Chuẩn hóa...)
                 NoteInfoAndActions(
-                    folderName = state.folderName, // "Chưa phân loại" hoặc Tên folder
                     isProcessing = state.isSummarizing,
-                    availableFolders = state.availableFolders,
                     isNormalizing = state.isNormalizing,
                     hasMindMap = state.mindMapData != null,
-                    onFolderSelected = { folder ->
-                        viewModel.onEvent(NoteEditEvent.OnFolderSelected(folder))
-                    },
                     onSummarize = { viewModel.onEvent(NoteEditEvent.OnSummarize) },
                     onNormalize = { viewModel.onEvent(NoteEditEvent.OnNormalize) },
                     onMindMap = { viewModel.onEvent(NoteEditEvent.OnGenerateMindMap) }
@@ -204,43 +184,3 @@ fun NoteEditScreen(
     }
 
 }
-
-// --- Composable: Top AppBar tùy chỉnh ---
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun NoteEditTopBar(
-//    onBackClick: () -> Unit,
-//    onSaveClick: () -> Unit
-//) {
-//    TopAppBar(
-//        title = {
-//            Text(
-//                "Text Notes App",
-//                style = MaterialTheme.typography.titleMedium,
-//                color = Color.Transparent // Ẩn title để giống design của bạn
-//            )
-//        },
-//        navigationIcon = {
-//            IconButton(onClick = onBackClick) {
-//                Icon(Icons.Filled.ArrowBackIos, contentDescription = "Quay lại", tint = Purple)
-//            }
-//        },
-//        actions = {
-//            Row(verticalAlignment = Alignment.CenterVertically) {
-//                // Nút Lưu
-//                IconButton(onClick = onSaveClick) {
-//                    Icon(
-//                        painter = painterResource(R.drawable.save), // Đảm bảo bạn có icon này
-//                        contentDescription = "Lưu",
-//                        tint = Purple,
-//                        modifier = Modifier.size(24.dp)
-//                    )
-//                }
-//            }
-//        },
-//        colors = TopAppBarDefaults.topAppBarColors(
-//            containerColor = Color.Transparent,
-//        )
-//    }
-//
-//}

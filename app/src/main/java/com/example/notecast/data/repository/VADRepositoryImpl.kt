@@ -10,7 +10,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import javax.inject.Inject
 
-private const val TAG_TRIM = "TrimSilenceRepo"
+//private const val TAG_TRIM = "TrimSilenceRepo"
 
 class VADRepositoryImpl @Inject constructor (
     private val vadManager: VADManager,
@@ -23,16 +23,16 @@ class VADRepositoryImpl @Inject constructor (
     override fun trimSilenceOffline(inputWavFile: File): File {
         if (!inputWavFile.exists()) return inputWavFile
 
-        Log.d(TAG_TRIM, "trimSilenceOffline: input=${inputWavFile.absolutePath}")
+//        Log.d(TAG_TRIM, "trimSilenceOffline: input=${inputWavFile.absolutePath}")
 
         val pcmSamples = try {
             readPcmFromWav(inputWavFile)
         } catch (t: Throwable) {
-            Log.e(TAG_TRIM, "readPcmFromWav error: ${t.message}", t)
+//            Log.e(TAG_TRIM, "readPcmFromWav error: ${t.message}", t)
             return inputWavFile
         }
         if (pcmSamples.isEmpty()) {
-            Log.w(TAG_TRIM, "trimSilenceOffline: empty PCM, return original")
+//            Log.w(TAG_TRIM, "trimSilenceOffline: empty PCM, return original")
             return inputWavFile
         }
 
@@ -47,17 +47,17 @@ class VADRepositoryImpl @Inject constructor (
 
         val rawSegments = findSpeechSegments(pcmSamples, frameSize)
         if (rawSegments.isEmpty()) {
-            Log.w(TAG_TRIM, "trimSilenceOffline: no segments, durationSec=$originalDurationSec")
+//            Log.w(TAG_TRIM, "trimSilenceOffline: no segments, durationSec=$originalDurationSec")
             return inputWavFile
         }
 
-        Log.d(TAG_TRIM, "trimSilenceOffline: originalSec=$originalDurationSec, rawSegments=${rawSegments.size}")
+//        Log.d(TAG_TRIM, "trimSilenceOffline: originalSec=$originalDurationSec, rawSegments=${rawSegments.size}")
 
         val mergedSegments = mergeSegmentsWithSilenceThreshold(rawSegments)
         val speechSamplesTotal = mergedSegments.sumOf { (it.endSampleExclusive - it.startSample).toLong() }.toInt()
         val speechDurationSec = speechSamplesTotal.toDouble() / sampleRate
 
-        Log.d(TAG_TRIM, "trimSilenceOffline: mergedSegments=${mergedSegments.size}, speechSec=$speechDurationSec")
+//        Log.d(TAG_TRIM, "trimSilenceOffline: mergedSegments=${mergedSegments.size}, speechSec=$speechDurationSec")
 
         // Single segment => giống trim head/tail cũ
         if (mergedSegments.size == 1) {
@@ -70,7 +70,7 @@ class VADRepositoryImpl @Inject constructor (
                 inputWavFile.nameWithoutExtension + "_clean.wav"
             )
             writeWavFromPcm(trimmed, cleanFile, sampleRate, channels = 1)
-            Log.d(TAG_TRIM, "trimSilenceOffline: single seg, outSec=${trimmedLength.toDouble() / sampleRate}")
+//            Log.d(TAG_TRIM, "trimSilenceOffline: single seg, outSec=${trimmedLength.toDouble() / sampleRate}")
             return cleanFile
         }
 
@@ -88,7 +88,7 @@ class VADRepositoryImpl @Inject constructor (
             inputWavFile.nameWithoutExtension + "_clean.wav"
         )
         writeWavFromPcm(joined, cleanFile, sampleRate, channels = 1)
-        Log.d(TAG_TRIM, "trimSilenceOffline: joined segs=${mergedSegments.size}, outSec=$speechDurationSec")
+//        Log.d(TAG_TRIM, "trimSilenceOffline: joined segs=${mergedSegments.size}, outSec=$speechDurationSec")
         return cleanFile
     }
 

@@ -1,7 +1,6 @@
-package com.example.notecast.presentation.ui.noteeditscreen
+package com.example.notecast.presentation.ui.common_components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,35 +16,18 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.notecast.R
-import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
-import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
+import com.example.notecast.presentation.ui.noteeditscreen.ActionChip
 
 @Composable
 fun NoteInfoAndActions(
-    folderName: String,
     isProcessing: Boolean,
-    onFolderSelected: (Folder?) -> Unit,
-    availableFolders: List<Folder>,
     onSummarize: () -> Unit,
     onNormalize: () -> Unit,
     hasMindMap: Boolean,
+    isNormalizing: Boolean,
     onMindMap: () -> Unit
 ) {
-//    var expanded by remember { mutableStateOf(false) }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-    ){
-        FolderSelectionButton(
-            currentFolderName = folderName,
-            availableFolders = availableFolders,
-            onFolderSelected = onFolderSelected
-        )
-    }
-    Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
-
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
@@ -67,6 +49,7 @@ fun NoteInfoAndActions(
                 label = "Chuẩn hóa",
                 leadingIcon = rememberVectorPainter(Icons.Outlined.AutoFixHigh),
                 onClick = onNormalize,
+                isLoading = isNormalizing,
                 backgroundBrush = Brush.verticalGradient(
                     0.0f to Color(0xff00D2FF),
                     0.59f to Color(0xff307FE3),

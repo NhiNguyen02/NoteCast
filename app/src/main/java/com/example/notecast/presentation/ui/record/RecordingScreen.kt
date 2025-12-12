@@ -41,8 +41,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.notecast.domain.model.AsrResult
-import com.example.notecast.navigation.Screen
-import com.example.notecast.presentation.navigation.Screen
+import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.Red
@@ -51,10 +50,11 @@ import com.example.notecast.presentation.viewmodel.ASRState
 import com.example.notecast.presentation.viewmodel.AudioViewModel
 import com.example.notecast.presentation.viewmodel.RecorderState
 import com.example.notecast.presentation.viewmodel.ASRViewModel
+import com.example.notecast.presentation.viewmodel.FolderViewModel
 import com.example.notecast.utils.formatElapsed
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.example.notecast.presentation.navigation.Screen
 
 private const val TAG_RECORDING = "RecordingScreen"
 
@@ -64,6 +64,7 @@ fun RecordingScreen(
     navController: NavController,
     audioViewModel: AudioViewModel = hiltViewModel(),
     asrViewModel: ASRViewModel = hiltViewModel(),
+    folderViewModel: FolderViewModel = hiltViewModel(),
     onClose: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -76,7 +77,10 @@ fun RecordingScreen(
     val amplitude by audioViewModel.amplitude.collectAsState()
 
     val asrState: ASRState by asrViewModel.state.collectAsState()
-    val lastSavedNoteId by asrViewModel.lastSavedNoteId.collectAsState()
+
+    // Reuse global folder state that already loads all folders
+    val folderState by folderViewModel.state.collectAsState()
+    val folders = folderState.folders
 
     var showProcessing by remember { mutableStateOf(false) }
 
@@ -87,13 +91,10 @@ fun RecordingScreen(
             is ASRState.Final -> {
                 showProcessing = false
 
-                // Lưu ý: KHÔNG resetSession trước khi save, để vẫn dùng được state.result
-                val dateLabel = android.text.format.DateFormat
-                    .format("yyyy-MM-dd", System.currentTimeMillis())
-                    .toString()
-
                 val result: AsrResult = state.result
                 val content = result.text
+                // Backend duration (Double, giây)
+                val backendDurationMs = (result.durationSec * 1000).toLong()
 
                 val chunksJson: String? = if (result.chunks.isNotEmpty()) {
                     try {
@@ -106,45 +107,45 @@ fun RecordingScreen(
                     }
                 } else null
 
-                // --- GỌI saveVoiceNote ĐỂ LƯU NOTE AUDIO VÀO DB ---
                 val audioPath = audioViewModel.currentRecordingFilePath
-                val durationMs = durationMillis
                 if (audioPath != null) {
                     Log.d(
                         TAG_RECORDING,
-                        "Calling saveVoiceNote: path=$audioPath, durationMs=$durationMs, textLength=${content.length}"
+                        "Calling saveVoiceNoteAndReturnId: path=$audioPath, durationMs=$backendDurationMs, textLength=${content.length}"
                     )
-                    asrViewModel.saveVoiceNote(
-                        title = "Ghi chú ghi âm",
-                        transcript = content,
-                        chunksJson = chunksJson,
-                        audioFilePath = audioPath,
-                        durationMs = durationMs,
-                        folderId = null,
-                    )
+                    try {
+                        val newId = asrViewModel.saveVoiceNoteAndReturnId(
+                            title = "Ghi chú ghi âm",
+                            transcript = content,
+                            chunksJson = chunksJson,
+                            audioFilePath = audioPath,
+                            durationMs = backendDurationMs,
+                            folderId = null,
+                        )
+
+                        Log.d(
+                            TAG_RECORDING,
+                            "Navigate to NoteDetailText: textLength=${content.length}, hasChunks=${chunksJson != null}, noteId='$newId'"
+                        )
+
+                        navController.navigate(
+                            Screen.NoteDetailText.createRoute(newId)
+                        ) {
+                            popUpTo(Screen.Recording.route) { inclusive = true }
+                        }
+                    } catch (t: Throwable) {
+                        Log.e(TAG_RECORDING, "Error saving voice note or navigating: ${t.message}", t)
+                        Toast.makeText(
+                            context,
+                            "Không thể lưu ghi chú giọng nói",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 } else {
-                    Log.w(TAG_RECORDING, "saveVoiceNote skipped because audioPath is null")
+                    Log.w(TAG_RECORDING, "saveVoiceNoteAndReturnId skipped because audioPath is null")
                 }
 
-                // Sau khi lưu note, reset session ASR
                 asrViewModel.resetSession()
-
-                Log.d(
-                    TAG_RECORDING,
-                    "Navigate to NoteDetail: textLength=${content.length}, hasChunks=${chunksJson != null}"
-                )
-
-                navController.navigate(
-                    Screen.NoteDetail.createRoute(
-                        noteId = lastSavedNoteId,
-                        title = "Ghi chú ghi âm",
-                        date = dateLabel,
-                        content = content,
-                        chunksJson = chunksJson,
-                    )
-                ) {
-                    popUpTo(Screen.Recording.route) { inclusive = true }
-                }
             }
             is ASRState.Error -> {
                 showProcessing = false
@@ -241,18 +242,15 @@ fun RecordingScreen(
                             onDismissRequest = { showMenu = false },
                             offset = DpOffset(x = (-8).dp, y = 8.dp)
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("Công việc") },
-                                onClick = { showMenu = false }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Cá nhân") },
-                                onClick = { showMenu = false }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Ý tưởng") },
-                                onClick = { showMenu = false }
-                            )
+                            folders.forEach { folder: Folder ->
+                                DropdownMenuItem(
+                                    text = { Text(folder.name) },
+                                    onClick = {
+                                        // TODO: gắn logic chọn folder cho bản ghi hiện tại (nếu cần)
+                                        showMenu = false
+                                    }
+                                )
+                            }
                         }
                     }
                 },
@@ -497,28 +495,20 @@ fun RecordingScreen(
             ProcessingDialog(onDismissRequest = { }, percent = 0, step = 1)
         }
 
-        if (showExitConfirm) {
-            AlertDialog(
-                onDismissRequest = { showExitConfirm = false },
-                title = { Text("Dừng ghi âm?") },
-                text = { Text("Bạn đang ghi âm, thoát ra sẽ mất đoạn ghi hiện tại.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        coroutineScope.launch {
-                            audioViewModel.stopRecording()
-                            showExitConfirm = false
-                            onClose()
-                        }
-                    }) {
-                        Text("Thoát")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showExitConfirm = false }) {
-                        Text("Hủy")
-                    }
+        ExitConfirm(
+            visible = showExitConfirm,
+            title = "Dừng ghi âm?",
+            message = "Bạn đang ghi âm, thoát ra sẽ mất đoạn ghi hiện tại.",
+            confirmText = "Thoát",
+            dismissText = "Hủy",
+            onConfirm = {
+                coroutineScope.launch {
+                    audioViewModel.stopRecording()
+                    showExitConfirm = false
+                    onClose()
                 }
-            )
-        }
+            },
+            onDismiss = { showExitConfirm = false }
+        )
     }
 }

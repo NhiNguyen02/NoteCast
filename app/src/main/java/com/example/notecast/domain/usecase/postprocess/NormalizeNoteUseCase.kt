@@ -1,8 +1,8 @@
-package com.example.notecast.domain.usecase
+package com.example.notecast.domain.usecase.postprocess
 
 import com.example.notecast.data.repository.AiRepository
 import com.example.notecast.domain.model.ProcessedTextData
-import com.example.notecast.domain.utils.HeuristicPunctuator
+import com.example.notecast.utils.HeuristicPunctuator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
