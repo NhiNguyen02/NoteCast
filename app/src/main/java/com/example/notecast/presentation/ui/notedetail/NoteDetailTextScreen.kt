@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
@@ -25,13 +23,12 @@ import com.example.notecast.presentation.theme.*
 import com.example.notecast.presentation.viewmodel.NoteDetailViewModel
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
-import com.example.notecast.presentation.ui.common_components.FolderSelectionButton
 import kotlinx.coroutines.delay
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.MediaItem
 import androidx.compose.ui.platform.LocalContext
 import com.example.notecast.presentation.ui.common_components.NoteInfoAndActions
-import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
+import com.example.notecast.presentation.ui.dialog.SummaryDialog
 import com.example.notecast.utils.formatNoteDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +40,6 @@ fun NoteDetailTextScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    val title = state.title
     val content = state.content
     val chunks = state.chunks
     val folderId = state.folderId
@@ -102,46 +98,18 @@ fun NoteDetailTextScreen(
         Log.d("NoteDetailTextScreen", "Loaded audio: filePath=$filePath, durationMs=$durationMs")
     }
 
-    val horizontalPadding = 16.dp
-
     // colors/gradients
     val gradientTop = Color(0xFFB96CFF)
     val gradientMiddle = Color(0xFF8A4BFF)
     val gradientBottom = Color(0xFF6A2CFF)
 
-    val headerDividerColor = PrimaryAccent.copy(alpha = 0.22f)
-    val tagBg = Color(0xFFFFF5DF)
-    val tagBorder = Color(0xFFFFC84D)
-    val tagText = Color(0xFF7A3E00)
-
     var selectedTab by remember { mutableIntStateOf(0) }
-
-    // heights
-    val contentCardHeight = 520.dp
-    val transcriptCardHeight = 460.dp
-
-    // result card state (shown after pressing Tóm tắt)
-    var showResultCard by remember { mutableStateOf(false) }
-
-    // keep preview-provided values in sync (hiện tại không dùng resultTitle/resultContent nữa)
-    LaunchedEffect(false) {
-        showResultCard = false
-    }
-
     val listState = rememberLazyListState()
+    var showSummaryDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-//            NoteDetailHeader(
-//                title = title,
-//                onTitleChange = { viewModel.onTitleChanged(it) },
-//                tagBg = tagBg,
-//                tagBorder = tagBorder,
-//                tagText = tagText,
-//                gradientMiddle = gradientMiddle,
-//                onBack = onBack,
-//            )
             NoteDetailHeader(
                 folderId = folderId,
                 availableFolders = availableFolders,
@@ -150,19 +118,6 @@ fun NoteDetailTextScreen(
                 onBack = onBack,
             )
         },
-//        bottomBar = {
-//            if (selectedTab == 0) {
-//                NoteDetailBottomActions(
-//                    onNormalize = { viewModel.onNormalizeClicked() },
-//                    onSaveNote = { viewModel.onSaveNote() },
-//                    onSummarize = { viewModel.onSummarizeClicked() },
-//                    hasMindMap = state.mindMap != null,
-//                    onGenerateOrShowMindMap = { viewModel.onGenerateMindMapClicked() },
-//                )
-//            } else {
-//                Spacer(modifier = Modifier.height(0.dp))
-//            }
-//        },
         containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
@@ -171,25 +126,14 @@ fun NoteDetailTextScreen(
                 .padding(paddingValues)
                 .background(Background)
         ) {
-//            Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
-//            // Folder selection row (giống NoteEditScreen -> NoteInfoAndActions)
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//            ) {
-//                FolderSelectionButton(
-//                    currentFolderId = folderId,
-//                    availableFolders = availableFolders,
-//                    onFolderSelected = { folder -> viewModel.onFolderSelected(folder) }
-//                )
-//            }
             // Divider + Tabs (fixed)
             HorizontalDivider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth())
             NoteInfoAndActions(
                 isProcessing = state.isSummarizing,
                 isNormalizing = state.isNormalizing,
                 hasMindMap = state.mindMap != null,
-                onSummarize = { viewModel.onSummarizeClicked() },
+                onSummarize = { showSummaryDialog = true },
+//                onSummarize = { viewModel.onSummarizeClicked() },
                 onNormalize = { viewModel.onNormalizeClicked() },
                 onMindMap = { viewModel.onGenerateMindMapClicked() }
             )
@@ -339,4 +283,21 @@ fun NoteDetailTextScreen(
             onDismissRequest = { /* không cho hủy hoặc xử lý theo ý bạn */ }
         )
     }
+
+    if (showSummaryDialog) {
+        SummaryDialog(
+            noteContent = state.content,
+            isProcessing = state.isSummarizing,
+            error = state.error,
+            onStart = {
+                // trigger tóm tắt cho detail
+                viewModel.onSummarizeClicked()
+            },
+            onDismiss = {
+                showSummaryDialog = false
+            },
+            contentAfter = state.content
+        )
+    }
+
 }

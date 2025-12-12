@@ -12,6 +12,7 @@ import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.notefolder.GetNoteByIdUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
+import com.example.notecast.domain.usecase.postprocess.SummarizeNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +40,8 @@ class NoteDetailViewModel @Inject constructor(
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
     getNoteByIdUseCase: GetNoteByIdUseCase,
     savedStateHandle: SavedStateHandle,
-) : ViewModel() {
+    private val summarizeNoteUseCase: SummarizeNoteUseCase,
+    ) : ViewModel() {
     private val TAG_NOTE_DETAIL = "NoteDetailVM"
 
     data class UiState(
@@ -179,15 +181,38 @@ class NoteDetailViewModel @Inject constructor(
     }
 
     fun onSummarizeClicked() {
-        val current = _uiState.value
-        if (current.content.isBlank() || current.isSummarizing) return
+//        val current = _uiState.value
+//        if (current.content.isBlank() || current.isSummarizing) return
+//        viewModelScope.launch {
+//            _uiState.update { it.copy(isSummarizing = true, error = null) }
+//            try {
+//                val summary = current.content + "\n\n[Tóm tắt]: Nội dung đã được tóm tắt."
+//                _uiState.update { it.copy(content = summary, isSummarizing = false) }
+//            } catch (t: Throwable) {
+//                _uiState.update { it.copy(isSummarizing = false, error = t.message) }
+//            }
+//        }
+        if (_uiState.value.isSummarizing) return
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSummarizing = true, error = null) }
             try {
-                val summary = current.content + "\n\n[Tóm tắt]: Nội dung đã được tóm tắt."
-                _uiState.update { it.copy(content = summary, isSummarizing = false) }
-            } catch (t: Throwable) {
-                _uiState.update { it.copy(isSummarizing = false, error = t.message) }
+                val contentToSummarize = _uiState.value.content
+                val summary = summarizeNoteUseCase(contentToSummarize)
+                // Append summary to content (keeps original). Adjust as needed.
+                _uiState.update {
+                    it.copy(
+                        isSummarizing = false,
+                        content = it.content + "\n\n[Tóm tắt]:\n" + summary
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSummarizing = false,
+                        error = "Lỗi tóm tắt: ${e.message ?: "Không xác định"}"
+                    )
+                }
             }
         }
     }

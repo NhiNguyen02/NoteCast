@@ -9,7 +9,7 @@ import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.notefolder.GetNoteByIdUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
-import com.example.notecast.domain.usecase.SummarizeNoteUseCase
+import com.example.notecast.domain.usecase.postprocess.SummarizeNoteUseCase
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
 import com.example.notecast.domain.usecase.postprocess.NormalizationResult

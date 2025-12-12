@@ -13,7 +13,7 @@ import com.example.notecast.domain.repository.PreferencesRepository
 import com.example.notecast.domain.repository.AudioRepository
 import com.example.notecast.domain.repository.FolderRepository
 import com.example.notecast.domain.repository.VADRepository
-import com.example.notecast.domain.usecase.SummarizeNoteUseCase
+import com.example.notecast.domain.usecase.postprocess.SummarizeNoteUseCase
 import dagger.Binds
 import dagger.Module
 import dagger.Provides

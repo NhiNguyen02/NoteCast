@@ -56,3 +56,16 @@ fun formatTime(totalSeconds: Int): String {
     val s = totalSeconds % 60
     return "%d:%02d".format(m, s)
 }
+
+// Utility: preview first 500 chars
+fun previewText(content: String, max: Int = 500): String {
+    return if (content.length <= max) content else content.substring(0, max) + "..."
+}
+// Utility: extract summary from content by the marker used in ViewModel: "[Tóm tắt]:"
+fun extractSummaryFromContent(content: String): String? {
+    val marker = "[Tóm tắt]:"
+    val idx = content.indexOf(marker)
+    if (idx == -1) return null
+    val after = content.substring(idx + marker.length)
+    return after.trim().ifEmpty { null }
+}
