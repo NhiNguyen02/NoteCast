@@ -1,9 +1,7 @@
 package com.example.notecast.core.vad
 
 import com.example.notecast.data.vad.rms.RmsVADImpl
-// import com.example.notecast.data.vad.silero.SileroVADImpl
 import com.example.notecast.domain.vad.VADDetector
-
 /**
  * VADManager: tạm thời dùng RMS VAD cho mọi device để tránh lỗi ONNX runtime với Silero.
  *

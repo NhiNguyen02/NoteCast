@@ -41,6 +41,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.notecast.domain.model.AsrResult
+import com.example.notecast.navigation.Screen
 import com.example.notecast.presentation.navigation.Screen
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.theme.PrimaryAccent
@@ -235,7 +236,6 @@ fun RecordingScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                         }
-
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },

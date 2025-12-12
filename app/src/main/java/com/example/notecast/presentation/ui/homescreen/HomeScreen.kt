@@ -91,23 +91,20 @@ fun HomeScreen(
             onEvent = viewModel::onEvent,
             onFilterClick = { showFilterDialog = true },
             onSortClick = { showSortDialog = true },
-            onOpenCreateDialog = {
-                // Ủy quyền cho MainAppScreen hiển thị CreateNoteDialog và điều hướng tương ứng
-                onOpenCreateDialog()
-            },
+            onOpenCreateDialog = onOpenCreateDialog,
 
             // Xử lý click vào note
-            onNoteClick = { note ->
+            onNoteClick = { noteId ->
                 if (isSelectionMode) {
                     // Nếu đang chọn -> Toggle
-                    if (selectedNoteIds.contains(note.id)) selectedNoteIds.remove(note.id)
-                    else selectedNoteIds.add(note.id)
+                    if (selectedNoteIds.contains(noteId)) selectedNoteIds.remove(noteId)
+                    else selectedNoteIds.add(noteId)
 
                     // Nếu bỏ chọn hết -> Tắt chế độ chọn
                     if (selectedNoteIds.isEmpty()) isSelectionMode = false
                 } else {
                     // Nếu bình thường -> Mở chi tiết
-                    onNoteClick(note)
+                    onNoteClick(noteId)
                 }
             },
 
@@ -212,12 +209,12 @@ private fun HomeScreenContent(
     onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
     onOpenCreateDialog: () -> Unit,
-    onNoteClick: (Note) -> Unit,
+    onNoteClick: (String) -> Unit,
     onNoteLongClick: (String) -> Unit,
     onSelectAllClick: () -> Unit,
     onDeleteSelected: () -> Unit,
     onMoveSelected: () -> Unit,
-    onCloseSelectionMode: () -> Unit,
+    onCloseSelectionMode: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val search = ""
@@ -228,8 +225,6 @@ private fun HomeScreenContent(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             if (!isSelectionMode) {
-                Column {
-                    // Existing FAB below
                     Box(
                         modifier = Modifier
                             .navigationBarsPadding()
@@ -243,7 +238,6 @@ private fun HomeScreenContent(
                         Icon(painter = painterResource(id = R.drawable.baseline_add_24), contentDescription = "Thêm ghi chú", tint = Color.White)
                     }
                 }
-            }
         },
         bottomBar = {
             // Hiển thị thanh thao tác khi ở chế độ chọn

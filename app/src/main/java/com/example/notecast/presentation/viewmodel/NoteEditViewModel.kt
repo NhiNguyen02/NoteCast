@@ -1,5 +1,6 @@
 package com.example.notecast.presentation.viewmodel
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +12,8 @@ import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
+import com.example.notecast.domain.usecase.NormalizationResult
+import com.example.notecast.domain.usecase.NormalizeNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,22 +32,22 @@ class NoteEditViewModel @Inject constructor(
     private val saveNoteUseCase: SaveNoteUseCase,
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
     private val generateMindMapUseCase: GenerateMindMapUseCase,
-//    private val normalizeNoteUseCase: NormalizeNoteUseCase,
+    private val normalizeNoteUseCase: NormalizeNoteUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NoteEditState())
     val state = _state.asStateFlow()
 
+    private val noteIdArg: String? = savedStateHandle["noteId"]
     private val jsonParser = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private val noteId: String? = savedStateHandle["noteId"]
 
     init {
         loadFolders()
         when {
-            noteId != null && noteId != "new" && noteId != "0" -> {
+            noteIdArg != null && noteIdArg != "new" && noteIdArg != "0" -> {
                 _state.update { it.copy(isLoading = true) }
-                loadNote(noteId)
+                loadNote(noteIdArg)
             }
         }
     }
@@ -134,57 +137,51 @@ class NoteEditViewModel @Inject constructor(
                     onEnd = { _state.update { it.copy(isSummarizing = false, content = it.content + "\n\n[Tóm tắt]: Nội dung đã được tóm tắt.") } }
                 )
             }
-            is NoteEditEvent.OnNormalize -> {
-                simulateAiProcess(
-                    onStart = { _state.update { it.copy(isNormalizing = true) } },
-                    onEnd = { _state.update { it.copy(isNormalizing = false, content = it.content.trim()) } } // Ví dụ trim
-                )
-            }
             //Chuẩn hóa văn bản
-//            is NoteEditEvent.OnNormalize -> {
-//                val originalContent = _state.value.content
-//                if (originalContent.isBlank()) return
-//
-//                viewModelScope.launch {
-//                    _state.update { it.copy(isNormalizing = true) }
-//
-//                    normalizeNoteUseCase(originalContent).collect { result ->
-//                        when (result) {
-//                            // 1. Giai đoạn Preview (Heuristic)
-//                            is NormalizationResult.Preview -> {
-//                                _state.update {
-//                                    it.copy(
-//                                        content = result.text,
-//                                        isNormalizing = true // Vẫn loading chờ AI
-//                                    )
-//                                }
-//                            }
-//                            // 2. Giai đoạn Success (AI trả về Object Data)
-//                            is NormalizationResult.Success -> {
-//                                val aiData = result.data
-//                                _state.update {
-//                                    it.copy(
-//                                        content = aiData.normalizedText, // Hiển thị text chuẩn
-//                                        processedTextData = aiData,      // Lưu object để lấy keywords khi Save
-//                                        isNormalizing = false,
-//                                        mindMapData = null
-//                                    )
-//                                }
-//                            }
-//                            // 3. Giai đoạn Lỗi
-//                            is NormalizationResult.Error -> {
-//                                _state.update {
-//                                    it.copy(
-//                                        isNormalizing = false,
-//                                        error = "Lỗi chuẩn hóa, dùng bản nháp.",
-//                                        content = result.text // Dùng bản Preview
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-//            }
+            is NoteEditEvent.OnNormalize -> {
+                val originalContent = _state.value.content
+                if (originalContent.isBlank()) return
+
+                viewModelScope.launch {
+                    _state.update { it.copy(isNormalizing = true) }
+
+                    normalizeNoteUseCase(originalContent).collect { result ->
+                        when (result) {
+                            // 1. Giai đoạn Preview (Heuristic)
+                            is NormalizationResult.Preview -> {
+                                _state.update {
+                                    it.copy(
+                                        content = result.text,
+                                        isNormalizing = true // Vẫn loading chờ AI
+                                    )
+                                }
+                            }
+                            // 2. Giai đoạn Success (AI trả về Object Data)
+                            is NormalizationResult.Success -> {
+                                val aiData = result.data
+                                _state.update {
+                                    it.copy(
+                                        content = aiData.normalizedText, // Hiển thị text chuẩn
+                                        processedTextData = aiData,      // Lưu object để lấy keywords khi Save
+                                        isNormalizing = false,
+                                        mindMapData = null
+                                    )
+                                }
+                            }
+                            // 3. Giai đoạn Lỗi
+                            is NormalizationResult.Error -> {
+                                _state.update {
+                                    it.copy(
+                                        isNormalizing = false,
+                                        error = "Lỗi chuẩn hóa, dùng bản nháp.",
+                                        content = result.text // Dùng bản Preview
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // --- TẠO VÀ LƯU MINDMAP ---
             is NoteEditEvent.OnGenerateMindMap -> {
                 // Nếu đã có Mindmap trong state rồi thì hiện luôn, không gọi AI nữa (Tiết kiệm)
@@ -278,22 +275,25 @@ class NoteEditViewModel @Inject constructor(
     private fun saveNote() {
         viewModelScope.launch {
             val currentState = _state.value
-            val now = System.currentTimeMillis()
-            val createdAt = currentState.createdAt.takeIf { it != 0L } ?: now
+//            val now = System.currentTimeMillis()
+//            val createdAt = currentState.createdAt.takeIf { it != 0L } ?: now
+            val idToSave = currentState.noteId ?: UUID.randomUUID().toString()
+            val punctuatedTextToSave = currentState.processedTextData?.normalizedText
             val mindMapJsonStr = if (currentState.mindMapData != null) {
                 jsonParser.encodeToString(currentState.mindMapData)
             } else null
             val note = Note(
-                id = currentState.noteId ?: UUID.randomUUID().toString(),
+                id = idToSave,
                 title = currentState.title,
                 content = currentState.content,
                 noteType = currentState.noteType,
-                updatedAt = now,
-                createdAt = createdAt,
+                updatedAt = 0,
+                createdAt = currentState.createdAt,
                 pinTimestamp = currentState.pinTimestamp,
                 tags = emptyList(),
                 isFavorite = currentState.isFavorite,
                 folderId = currentState.folderId,
+                punctuatedText = punctuatedTextToSave,
                 // Audio metadata
                 filePath = currentState.audioFilePath,
                 durationMs = currentState.audioDurationMs,

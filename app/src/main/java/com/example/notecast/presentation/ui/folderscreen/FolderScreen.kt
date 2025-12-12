@@ -1,4 +1,3 @@
-
 package com.example.notecast.presentation.ui.folderscreen
 
 import android.graphics.Color as AndroidColor

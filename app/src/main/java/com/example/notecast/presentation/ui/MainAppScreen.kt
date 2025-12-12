@@ -24,21 +24,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.notecast.domain.model.ChunkResult
-import com.example.notecast.presentation.navigation.Screen
+import com.example.notecast.navigation.Screen
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.ui.common_components.AppDrawerContent
 import com.example.notecast.presentation.ui.dialog.CreateNoteDialog
 import com.example.notecast.presentation.ui.folderscreen.FolderScreen
 import com.example.notecast.presentation.ui.homescreen.HomeScreen
-import com.example.notecast.presentation.ui.notedetail.NoteDetailTextScreen
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditScreen
 import com.example.notecast.presentation.ui.record.RecordingScreen
 import com.example.notecast.presentation.ui.settingsscreen.SettingsScreen
-import com.example.notecast.utils.formatNoteDate
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -51,12 +46,12 @@ fun MainAppScreen() {
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
     var visualSelectedRoute by remember(currentRoute) { mutableStateOf(currentRoute) }
 
-    // Trạng thái Dialog tạo ghi chú (Vẫn giữ ở đây vì nó điều hướng đi nơi khác)
+     // Overlay / dialog states
     var showCreateDialog by remember { mutableStateOf(false) }
     var showFilterScreen by remember { mutableStateOf(false) }
     var showSortScreen by remember { mutableStateOf(false) }
 
-    // Tự động đóng Drawer khi chuyển màn hình
+    // Ensure drawer closes automatically when navigating away (existing behavior)
     LaunchedEffect(currentRoute) {
         if (currentRoute != Screen.Home.route && drawerState.isOpen) {
             scope.launch { drawerState.close() }
@@ -108,29 +103,9 @@ fun MainAppScreen() {
                     HomeScreen(
                         drawerState = drawerState,
                         onOpenCreateDialog = { showCreateDialog = true },
-                        onNoteClick = { note ->
-                            if (note.noteType == "VOICE") {
-                                val title = note.title
-                                val dateLabel = formatNoteDate(note.createdAt)
-                                val content = note.rawText ?: note.content.orEmpty()
-
-                                val chunksJson: String? = note.timestampsJson
-                                // timestampsJson đã là JSON string của danh sách chunk theo EntityMapper
-
-                                appNavController.navigate(
-                                    Screen.NoteDetail.createRoute(
-                                        noteId = note.id,
-                                        title = title,
-                                        date = dateLabel,
-                                        content = content,
-                                        chunksJson = chunksJson,
-                                    )
-                                )
-                            } else {
-                                appNavController.navigate(Screen.NoteEdit.createRoute(note.id))
-                            }
-                        },
-                        navController = appNavController
+                        onNoteClick = { noteId ->
+                            appNavController.navigate(Screen.NoteEdit.createRoute(noteId))
+                        }
                     )
                 }
 
@@ -140,7 +115,7 @@ fun MainAppScreen() {
                     arguments = Screen.NoteEdit.arguments
                 ) {
                     NoteEditScreen(
-                        onNavigateBack = { appNavController.popBackStack() },
+                        onNavigateBack = { appNavController.popBackStack() }
                     )
                 }
 
@@ -154,21 +129,13 @@ fun MainAppScreen() {
                         }
                     )
                 }
-                composable(Screen.Notifications.route) { PlaceholderScreen(text = "Thông báo") }
+
+                // 4. Màn hình SETTINGS
                 composable(Screen.Settings.route) {
                     SettingsScreen(
                         onBackClick = { appNavController.popBackStack() }
                     )
-                }
 
-                // 4. Màn hình chi tiết ghi chú văn bản (NoteDetailTextScreen) nhận trực tiếp transcript
-                composable(
-                    route = Screen.NoteDetail.routeWithArgs,
-                    arguments = Screen.NoteDetail.arguments
-                ) {
-                    NoteDetailTextScreen(
-                        onBack = { appNavController.popBackStack() }
-                    )
                 }
 
                 // 5. Màn hình GHI ÂM
@@ -191,7 +158,7 @@ fun MainAppScreen() {
                         showCreateDialog = false
                         when (type) {
                             "record" -> appNavController.navigate(Screen.Recording.route)
-                            "text" -> appNavController.navigate(Screen.NoteEdit.createRoute("new"))
+                            "text" -> { appNavController.navigate(route = Screen.NoteEdit.createRoute(0)) }
                         }
                     },
                     startAutoSummary = true

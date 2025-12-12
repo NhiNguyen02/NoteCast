@@ -1,16 +1,16 @@
 package com.example.notecast.di
 
 import com.example.notecast.data.repository.AsrRepositoryImpl
+import com.example.notecast.data.repository.AudioRepositoryImpl
 import com.example.notecast.data.repository.FolderRepositoryImpl
 import com.example.notecast.data.repository.NoteRepositoryImpl
 import com.example.notecast.data.repository.PreferencesRepositoryImpl
-import com.example.notecast.data.repository.AudioRepositoryImpl
 import com.example.notecast.data.repository.VADRepositoryImpl
 import com.example.notecast.domain.repository.AsrRepository
-import com.example.notecast.domain.repository.FolderRepository
 import com.example.notecast.domain.repository.NoteRepository
 import com.example.notecast.domain.repository.PreferencesRepository
 import com.example.notecast.domain.repository.AudioRepository
+import com.example.notecast.domain.repository.FolderRepository
 import com.example.notecast.domain.repository.VADRepository
 import dagger.Binds
 import dagger.Module

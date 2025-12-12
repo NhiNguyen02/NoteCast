@@ -50,8 +50,6 @@ fun NoteDetailTextScreen(
     val gradientTop = Color(0xFFB96CFF)
     val gradientMiddle = Color(0xFF8A4BFF)
     val gradientBottom = Color(0xFF6A2CFF)
-//    val blueStart = Color(0xFF2EC7FF)
-//    val blueEnd = Color(0xFF3AA8FF)
 
     val headerDividerColor = PrimaryAccent.copy(alpha = 0.22f)
     val tagBg = Color(0xFFFFF5DF)
@@ -135,7 +133,6 @@ fun NoteDetailTextScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = horizontalPadding, vertical = 5.dp)
             ) {
                 FolderSelectionButton(
                     currentFolderName = folderName,

@@ -1,4 +1,4 @@
-package com.example.notecast.presentation.navigation
+package com.example.notecast.navigation
 
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -17,20 +17,16 @@ sealed class Screen(val route: String) {
     object Notifications : Screen("notifications")
     object Settings : Screen("settings")
     object Recording : Screen("recording")
-    object TokenizerDebug : Screen("tokenizer_debug")
-
-    object NoteEdit : Screen("note_edit/{noteId}") {
+    object NoteEdit : Screen("note_edit/{noteId}"){
         fun createRoute(noteId: String) = "note_edit/$noteId"
 
         const val arg = "noteId"
-
         val routeWithArgs = "note_edit/{$arg}"
-
         val arguments = listOf(
             navArgument(arg) {
                 type = NavType.StringType
-                defaultValue = "new" // create mode when missing
-            },
+                defaultValue = "0" // Mặc định là 0 (Tạo mới)
+            }
         )
     }
 

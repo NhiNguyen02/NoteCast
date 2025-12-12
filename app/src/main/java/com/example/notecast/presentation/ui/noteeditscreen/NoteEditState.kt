@@ -1,6 +1,7 @@
 package com.example.notecast.presentation.ui.noteeditscreen
 
 import com.example.notecast.domain.model.Folder
+import com.example.notecast.domain.model.ProcessedTextData
 
 /**
  * Trạng thái của màn hình Sửa/Tạo Ghi chú.
@@ -31,9 +32,10 @@ data class NoteEditState(
     val isSummarizing: Boolean = false,
     val isNormalizing: Boolean = false,
     val isGeneratingMindMap: Boolean = false,
-
-    val mindMapData: com.example.notecast.domain.model.MindMapNode? = null, // Thêm trường này
     val showMindMapDialog: Boolean = false,
+
+
+    val processedTextData: ProcessedTextData? = null, // Lưu kết quả NLP (Keywords, Sentences) tạm thời
     val processingPercent: Int = 0,
     // Điều hướng
     val isSaved: Boolean = false,

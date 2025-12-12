@@ -12,8 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -22,13 +22,18 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import com.example.notecast.domain.model.MindMapNode
+import com.example.notecast.presentation.theme.Background
+import com.example.notecast.presentation.theme.TitleBrush
 import kotlin.math.max
 
 @Composable
@@ -38,24 +43,29 @@ fun MindMapDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false) // Full screen
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFF8F9FA)
+            modifier = Modifier.fillMaxSize().background(Background)
         ) {
-            Column {
-                MindMapHeader(onDismiss)
+            Column(Modifier.background(Background)) {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
-                        .background(Color(0xFFF8F9FA))
+                        .zIndex(10f)
+                        .background(Color.Transparent) // Nền đặc để che nội dung
+                ) {
+                    MindMapHeader(onDismiss)
+                }
+                Divider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth().zIndex(10f))
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth().background(Color.Transparent),
                 ) {
                     ZoomablePannableContent {
-                        // Padding lớn để cây nằm giữa
-                        Box(modifier = Modifier.padding(100.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .wrapContentSize(unbounded = true) // Cho phép tràn màn hình
+                                .padding(50.dp) // Padding đệm xung quanh
+                        ) {
                             RecursiveTree(node = rootNode, isRoot = true)
                         }
                     }
@@ -65,14 +75,11 @@ fun MindMapDialog(
     }
 }
 
-// --- ĐỆ QUY VẼ CÂY ---
 @Composable
 fun RecursiveTree(node: MindMapNode, isRoot: Boolean) {
-    // Parse màu
     val nodeColor = try {
         Color(AndroidColor.parseColor(node.colorHex ?: "#6200EE"))
     } catch (e: Exception) { Color(0xFF6200EE) }
-    println("NODE = ${node.label}, children = ${node.children.size}")
     TreeLayout(
         lineColor = nodeColor,
         nodeContent = {
@@ -87,7 +94,7 @@ fun RecursiveTree(node: MindMapNode, isRoot: Boolean) {
 }
 
 /**
- * CUSTOM LAYOUT: Sắp xếp Cha bên trái, Con bên phải và VẼ ĐƯỜNG NỐI
+ * CUSTOM LAYOUT: FIX LỖI MẤT ROOT NODE & CHỒNG ĐÈ
  */
 @Composable
 fun TreeLayout(
@@ -103,11 +110,17 @@ fun TreeLayout(
             lineCoordinates.forEach { (start, end) ->
                 val path = Path()
                 path.moveTo(start.x, start.y)
+
+                // CUBIC BEZIER (Cong chữ S mềm mại)
+                val controlPoint1 = Offset(start.x + (end.x - start.x) * 0.6f, start.y)
+                val controlPoint2 = Offset(start.x + (end.x - start.x) * 0.4f, end.y)
+
                 path.cubicTo(
-                    start.x + (end.x - start.x) / 2, start.y,
-                    start.x + (end.x - start.x) / 2, end.y,
+                    controlPoint1.x, controlPoint1.y,
+                    controlPoint2.x, controlPoint2.y,
                     end.x, end.y
                 )
+
                 drawPath(
                     path = path,
                     color = lineColor,
@@ -117,62 +130,76 @@ fun TreeLayout(
         }
     ) { measurables, constraints ->
 
-        val parentPlaceable = measurables[0].first().measure(constraints)
+        // --- FIX QUAN TRỌNG: THÁO BỎ RÀNG BUỘC CHO CẢ CHA VÀ CON ---
+        // Cho phép đo đạc tự do (Infinite), không bị giới hạn bởi kích thước màn hình
+        val unconstrained = constraints.copy(
+            minWidth = 0,
+            maxWidth = Constraints.Infinity,
+            minHeight = 0,
+            maxHeight = Constraints.Infinity
+        )
 
-        val childMeasurables = measurables[1]
-        val childPlaceables = childMeasurables.map { it.measure(constraints) }
+        // 1. Đo Node Cha với unconstrained (Sửa lỗi mất nội dung Root)
+        val parentPlaceable = measurables[0].first().measure(unconstrained)
 
-        val horizontalGap = 80.dp.roundToPx()
-        val verticalGap = 24.dp.roundToPx()
+        // 2. Đo các Node Con với unconstrained (Sửa lỗi chồng đè)
+        val childPlaceables = measurables[1].map { it.measure(unconstrained) }
 
-        // TÍNH CHIỀU CAO SUBTREE (giãn theo chiều dọc)
-        val totalChildrenHeight =
-            childPlaceables.sumOf { it.height } +
-                    max(0, childPlaceables.size - 1) * verticalGap
+        // --- CẤU HÌNH KHOẢNG CÁCH ---
+        val horizontalGap = 100.dp.roundToPx() // Ngang 100dp
+        val verticalGap = 30.dp.roundToPx()    // Dọc 30dp
 
-        val layoutHeight = max(parentPlaceable.height, totalChildrenHeight)
+        // 3. Tính chiều cao tổng khối con
+        val childrenBlockHeight = if (childPlaceables.isEmpty()) 0 else {
+            childPlaceables.sumOf { it.height } + (childPlaceables.size - 1) * verticalGap
+        }
 
-        // TÍNH CHIỀU RỘNG SUBTREE (giãn theo chiều ngang)
+        // 4. Kích thước Layout
+        val layoutHeight = max(parentPlaceable.height, childrenBlockHeight)
+
         val maxChildWidth = childPlaceables.maxOfOrNull { it.width } ?: 0
         val layoutWidth = parentPlaceable.width +
-                (if (childPlaceables.isEmpty()) 0 else horizontalGap + maxChildWidth)
+                if (childPlaceables.isEmpty()) 0 else (horizontalGap + maxChildWidth)
 
         layout(layoutWidth, layoutHeight) {
 
-            // Đặt Parent
+            // --- A. ĐẶT NODE CHA ---
             val parentY = (layoutHeight - parentPlaceable.height) / 2
             parentPlaceable.place(0, parentY)
 
             val startPoint = Offset(
                 x = parentPlaceable.width.toFloat(),
-                y = parentY + parentPlaceable.height / 2f
+                y = (parentY + parentPlaceable.height / 2).toFloat()
             )
 
-            var childY = (layoutHeight - totalChildrenHeight) / 2
+            // --- B. ĐẶT CÁC NODE CON ---
             val childX = parentPlaceable.width + horizontalGap
+
+            var currentChildY = (layoutHeight - childrenBlockHeight) / 2
+            if (currentChildY < 0) currentChildY = 0
 
             val newLines = mutableListOf<Pair<Offset, Offset>>()
 
             childPlaceables.forEach { child ->
-                child.place(childX, childY)
+                child.place(childX, currentChildY)
 
+                // Tính điểm kết thúc dây (Lấn vào 20px để không hở)
                 val endPoint = Offset(
-                    x = childX.toFloat(),
-                    y = childY + child.height / 2f
+                    x = childX.toFloat() + 20f,
+                    y = (currentChildY + child.height / 2).toFloat()
                 )
-                newLines.add(startPoint to endPoint)
 
-                childY += child.height + verticalGap
+                newLines.add(startPoint to endPoint)
+                currentChildY += child.height + verticalGap
             }
 
-            if (newLines != lineCoordinates)
+            if (lineCoordinates != newLines) {
                 lineCoordinates = newLines
+            }
         }
     }
 }
 
-
-// --- COMPONENT: THẺ NODE ---
 @Composable
 fun MindMapNodeCard(text: String, isRoot: Boolean, color: Color) {
     val backgroundColor = if (isRoot) color else Color.White
@@ -184,13 +211,14 @@ fun MindMapNodeCard(text: String, isRoot: Boolean, color: Color) {
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         modifier = Modifier
-            .width(IntrinsicSize.Max)
             .widthIn(min = 80.dp, max = 220.dp)
+            .wrapContentHeight()
             .border(if (isRoot) 0.dp else 2.dp, borderColor, RoundedCornerShape(8.dp))
+            .zIndex(2f) // Đè lên dây nối
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Text(
                 text = text,
@@ -205,20 +233,18 @@ fun MindMapNodeCard(text: String, isRoot: Boolean, color: Color) {
     }
 }
 
-// --- HEADER ---
 @Composable
 fun MindMapHeader(onDismiss: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
-            .background(Color.White, RoundedCornerShape(12.dp))
+            .background(Background)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text("Sơ đồ tư duy", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("Mind Map", fontWeight = FontWeight.Bold, fontSize = 20.sp, style = TextStyle(brush = TitleBrush))
             Text("Được tạo từ ghi chú", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         }
         IconButton(onClick = onDismiss) {
@@ -227,7 +253,6 @@ fun MindMapHeader(onDismiss: () -> Unit) {
     }
 }
 
-// --- ZOOM & PAN ---
 @Composable
 fun ZoomablePannableContent(content: @Composable () -> Unit) {
     var scale by remember { mutableFloatStateOf(1f) }
@@ -248,7 +273,7 @@ fun ZoomablePannableContent(content: @Composable () -> Unit) {
                 translationX = offset.x,
                 translationY = offset.y
             ),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.CenterStart
     ) {
         content()
     }
