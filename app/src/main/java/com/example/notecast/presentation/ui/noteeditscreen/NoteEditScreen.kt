@@ -1,17 +1,32 @@
 package com.example.notecast.presentation.ui.noteeditscreen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIos
+import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Pageview
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import android.graphics.Color as AndroidColor
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +38,11 @@ import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.viewmodel.NoteEditViewModel
 import com.example.notecast.utils.formatNoteDate
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 
 /**
  * Màn hình Sửa/Tạo Ghi chú (Đã kết nối ViewModel thật)
@@ -35,6 +55,7 @@ fun NoteEditScreen(
     // 1. Lấy State từ ViewModel
     val state by viewModel.state.collectAsState()
     var showFolderDialog by remember { mutableStateOf(false) }
+    var showSummaryDialog by remember { mutableStateOf(false) }
 
     // 2. Logic tự động quay lại khi lưu xong
     LaunchedEffect(state.isSaved) {
@@ -77,10 +98,13 @@ fun NoteEditScreen(
                     isProcessing = state.isSummarizing,
                     isNormalizing = state.isNormalizing,
                     hasMindMap = state.mindMapData != null,
-                    onSummarize = { viewModel.onEvent(NoteEditEvent.OnSummarize) },
                     onNormalize = { viewModel.onEvent(NoteEditEvent.OnNormalize) },
-                    onMindMap = { viewModel.onEvent(NoteEditEvent.OnGenerateMindMap) }
-                )
+                    // open the in-file summary dialog, which will call the ViewModel
+                    onSummarize = { showSummaryDialog = true },
+                    onMindMap = { viewModel.onEvent(NoteEditEvent.OnGenerateMindMap) },
+                    onSummarize = { showSummaryDialog = true },
+//                    onNormalize = { viewModel.onEvent(NoteEditEvent.OnNormalize) },
+                    )
 
                 Column(
                     modifier = Modifier
@@ -160,6 +184,24 @@ fun NoteEditScreen(
             }
         }
     }
+
+    // Summary dialog (in-file) - opens when user taps Tóm tắt chip
+    if (showSummaryDialog) {
+        SummaryDialog(
+            noteContent = state.content,
+            isProcessing = state.isSummarizing,
+            error = state.error,
+            onStart = {
+                // trigger ViewModel summarization
+                viewModel.onEvent(NoteEditEvent.OnSummarize)
+            },
+            onDismiss = {
+                showSummaryDialog = false
+            },
+            contentAfter = state.content
+        )
+    }
+
     if (state.showMindMapDialog && state.mindMapData != null) {
         MindMapDialog(
             rootNode = state.mindMapData!!,
@@ -168,10 +210,13 @@ fun NoteEditScreen(
 
     }
     if (state.isGeneratingMindMap) {
+        // Sử dụng ProcessingDialog bạn đã có
         ProcessingDialog(
             percent = state.processingPercent,
             step = 1, // Hoặc số bước tùy logic của dialog bạn
             onDismissRequest = {
+                // Tùy chọn: Có cho phép hủy khi đang tạo không?
+                // Nếu không, để trống hoặc không làm gì
             }
         )
     }
@@ -183,4 +228,77 @@ fun NoteEditScreen(
         )
     }
 
+}
+
+// Summary dialog composable (in-file). Displays initial preview, runs summarization via onStart,
+// shows loading state, and shows extracted summary from contentAfter when available.
+@Composable
+fun SummaryDialog(
+    noteContent: String,
+    isProcessing: Boolean,
+    error: String?,
+    onStart: () -> Unit,
+    onDismiss: () -> Unit,
+    contentAfter: String // observe ViewModel content to detect appended summary
+) {
+    val clipboard = LocalClipboardManager.current
+    var showResult by remember { mutableStateOf(false) }
+    val extracted by remember(contentAfter) {
+        mutableStateOf(extractSummaryFromContent(contentAfter))
+    }
+
+    LaunchedEffect(isProcessing, extracted) {
+        // when processing finished and extracted text is present, show result
+        if (!isProcessing && !extracted.isNullOrBlank()) {
+            showResult = true
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            if (showResult) {
+                TextButton(onClick = {
+                    // copy and close
+                    extracted?.let { clipboard.setText(AnnotatedString(it)) }
+                    onDismiss()
+                }) {
+                    Text("Copy & Close")
+                }
+            } else {
+                TextButton(onClick = onStart) {
+                    Text("Tạo tóm tắt")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Đóng") }
+        },
+        title = {
+            Text("Tóm tắt ghi chú")
+        },
+        text = {
+            Column {
+                if (isProcessing) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Đang tạo tóm tắt...")
+                    }
+                } else if (!showResult) {
+                    if (!error.isNullOrBlank()) {
+                        Text("Lỗi: $error", color = Color.Red)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    Text("Nội dung (xem trước):", fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(previewText(noteContent), style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Text("Kết quả tóm tắt:", fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(extracted ?: "Không tìm thấy tóm tắt", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    )
 }

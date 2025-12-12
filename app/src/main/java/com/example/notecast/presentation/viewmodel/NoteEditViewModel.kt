@@ -9,6 +9,7 @@ import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.notefolder.GetNoteByIdUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
+import com.example.notecast.domain.usecase.SummarizeNoteUseCase
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditEvent
 import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
 import com.example.notecast.domain.usecase.postprocess.NormalizationResult
@@ -32,6 +33,7 @@ class NoteEditViewModel @Inject constructor(
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
     private val generateMindMapUseCase: GenerateMindMapUseCase,
     private val normalizeNoteUseCase: NormalizeNoteUseCase,
+    private val summarizeNoteUseCase: SummarizeNoteUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -62,6 +64,7 @@ class NoteEditViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
     private fun loadNote(id: String) {
+
         getNoteByIdUseCase(id).onEach { note ->
             if (note != null) {
                 val folderName = _state.value.availableFolders.find { it.id == note.folderId }?.name ?: "Chưa phân loại"
@@ -103,7 +106,8 @@ class NoteEditViewModel @Inject constructor(
                             mindMapData = null
                         )
                     }
-                }            }
+                }
+            }
             is NoteEditEvent.OnContentChanged -> {
                 if (_state.value.content != event.content) {
                     _state.update {
@@ -112,7 +116,8 @@ class NoteEditViewModel @Inject constructor(
                             mindMapData = null
                         )
                     }
-                }            }
+                }
+            }
             is NoteEditEvent.OnToggleFavorite -> {
                 _state.update { it.copy(isFavorite = !it.isFavorite) }
             }
@@ -129,12 +134,32 @@ class NoteEditViewModel @Inject constructor(
                     )
                 }
             }
-            // --- XỬ LÝ AI (GIẢ LẬP) ---
+            // --- XỬ LÝ AI: TÓM TẮT (thực tế, gọi use case) ---
             is NoteEditEvent.OnSummarize -> {
-                simulateAiProcess(
-                    onStart = { _state.update { it.copy(isSummarizing = true) } },
-                    onEnd = { _state.update { it.copy(isSummarizing = false, content = it.content + "\n\n[Tóm tắt]: Nội dung đã được tóm tắt.") } }
-                )
+                // Prevent duplicate calls
+                if (_state.value.isSummarizing) return
+
+                viewModelScope.launch {
+                    _state.update { it.copy(isSummarizing = true, error = null) }
+                    try {
+                        val contentToSummarize = _state.value.content
+                        val summary = summarizeNoteUseCase(contentToSummarize)
+                        // Append summary to content (keeps original). Adjust as needed.
+                        _state.update {
+                            it.copy(
+                                isSummarizing = false,
+                                content = it.content + "\n\n[Tóm tắt]:\n" + summary
+                            )
+                        }
+                    } catch (e: Exception) {
+                        _state.update {
+                            it.copy(
+                                isSummarizing = false,
+                                error = "Lỗi tóm tắt: ${e.message ?: "Không xác định"}"
+                            )
+                        }
+                    }
+                }
             }
             //Chuẩn hóa văn bản
             is NoteEditEvent.OnNormalize -> {
@@ -189,6 +214,7 @@ class NoteEditViewModel @Inject constructor(
                     _state.update { it.copy(showMindMapDialog = true) }
                     return
                 }
+
                 // Bắt đầu hiển thị Dialog Processing
                 _state.update { it.copy(isGeneratingMindMap = true, processingPercent = 0) }
 
@@ -255,10 +281,15 @@ class NoteEditViewModel @Inject constructor(
                         }
                     }
                 }
+
             }
+
             is NoteEditEvent.OnCloseMindMap -> {
                 _state.update { it.copy(showMindMapDialog = false) }
             }
+
+
+
         }
     }
 
