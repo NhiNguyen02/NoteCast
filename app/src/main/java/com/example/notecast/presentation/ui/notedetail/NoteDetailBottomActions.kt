@@ -17,7 +17,8 @@ fun NoteDetailBottomActions(
     onNormalize: () -> Unit,
     onSaveNote: () -> Unit,
     onSummarize: () -> Unit,
-    onGenerateMindMap: () -> Unit,
+    hasMindMap: Boolean,
+    onGenerateOrShowMindMap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val gradientTop = Color(0xFFB96CFF)
@@ -72,18 +73,15 @@ fun NoteDetailBottomActions(
             )
 
             GradientActionButton(
-                text = "Mind map",
+                text = if (hasMindMap) "Xem Mind map" else "Tạo Mind map",
                 icon = Icons.Default.DeviceHub,
                 textColor = Color(0xFF6EA8D9),
                 gradientColors = listOf(Color(0xFFF2F7FF), Color(0xFFE8F3FF)),
                 borderColor = Color(0xFFB8CFE6),
                 iconTint = gradientMiddle,
-                onClick = onGenerateMindMap,
+                onClick = onGenerateOrShowMindMap,
                 modifier = Modifier.weight(1f)
             )
         }
     }
 }
-
-
-

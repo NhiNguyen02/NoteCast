@@ -9,6 +9,7 @@ import com.example.notecast.domain.model.Folder
 import com.example.notecast.domain.model.MindMapNode
 import com.example.notecast.domain.model.Note
 import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
+import com.example.notecast.domain.usecase.notefolder.GetNoteByIdUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
 import com.example.notecast.presentation.navigation.Screen
@@ -39,6 +40,7 @@ class NoteDetailViewModel @Inject constructor(
     private val saveNoteUseCase: SaveNoteUseCase,
     private val generateMindMapUseCase: GenerateMindMapUseCase,
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
+    private val getNoteByIdUseCase: GetNoteByIdUseCase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -63,8 +65,7 @@ class NoteDetailViewModel @Inject constructor(
         val processingPercent: Int = 0,
         val mindMap: MindMapNode? = null,
         val showMindMapDialog: Boolean = false,
-        // Trạng thái lưu & lỗi
-        val isSaved: Boolean = false,
+        // Trạng thái lỗi
         val error: String? = null,
     )
 
@@ -74,13 +75,15 @@ class NoteDetailViewModel @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     init {
+        val rawNoteId: String = savedStateHandle[Screen.NoteDetail.noteIdArg] ?: ""
         val rawTitle: String = savedStateHandle[Screen.NoteDetail.titleArg] ?: "Ghi chú ghi âm"
         val rawDate: String = savedStateHandle[Screen.NoteDetail.dateArg] ?: ""
         val rawContent: String = savedStateHandle[Screen.NoteDetail.contentArg] ?: ""
         val rawChunksJson: String = savedStateHandle[Screen.NoteDetail.chunksArg] ?: ""
 
-        Log.d(TAG_NOTE_DETAIL, "Nav args: title='${rawTitle}', date='${rawDate}', contentLength=${rawContent.length}, chunksJsonLength=${rawChunksJson.length}")
+        Log.d(TAG_NOTE_DETAIL, "Nav args: noteId='${rawNoteId}', title='${rawTitle}', date='${rawDate}', contentLength=${rawContent.length}, chunksJsonLength=${rawChunksJson.length}")
 
+        val noteIdArg = rawNoteId.takeIf { it.isNotBlank() }
         val titleArg = try { URLDecoder.decode(rawTitle, "UTF-8") } catch (e: Exception) {
             Log.e(TAG_NOTE_DETAIL, "Failed to decode title: ${e.message}", e)
             rawTitle
@@ -102,10 +105,6 @@ class NoteDetailViewModel @Inject constructor(
             try {
                 val list = json.decodeFromString<List<ChunkResult>>(chunksJsonEncoded)
                 Log.d(TAG_NOTE_DETAIL, "Decoded chunks from nav args: count=${list.size}")
-                if (list.isNotEmpty()) {
-                    val c = list.first()
-                    Log.d(TAG_NOTE_DETAIL, "First decoded chunk: startSec=${c.startSec}, endSec=${c.endSec}, text='${c.text.take(80)}'")
-                }
                 list
             } catch (e: Exception) {
                 Log.e(TAG_NOTE_DETAIL, "Failed to parse chunksJson: ${e.message}", e)
@@ -116,13 +115,11 @@ class NoteDetailViewModel @Inject constructor(
             emptyList()
         }
 
-        // Nếu đến từ RecordingScreen (voice), mình muốn noteType là VOICE.
-        // Hiện tại route NoteDetail chưa có tham số riêng cho noteType,
-        // nhưng vì đây là màn chi tiết transcript cho ghi âm nên set mặc định VOICE hợp lý hơn.
         val inferredType = "VOICE"
 
         _uiState.update {
             it.copy(
+                noteId = noteIdArg,
                 title = titleArg,
                 date = dateArg,
                 content = contentArg,
@@ -132,6 +129,36 @@ class NoteDetailViewModel @Inject constructor(
         }
 
         loadFolders()
+
+        if (noteIdArg != null) {
+            getNoteByIdUseCase(noteIdArg).onEach { note ->
+                if (note != null) {
+                    val savedMindMap = if (!note.mindMapJson.isNullOrBlank()) {
+                        try {
+                            json.decodeFromString<MindMapNode>(note.mindMapJson)
+                        } catch (_: Exception) { null }
+                    } else null
+
+                    _uiState.update { state ->
+                        state.copy(
+                            // giữ lại title/content từ nav nếu bạn muốn ưu tiên UI hiện tại,
+                            // hoặc override bằng note.title/note.content nếu muốn sync tuyệt đối
+                            title = state.title.ifBlank { note.title },
+                            content = state.content.ifBlank { note.content.orEmpty() },
+
+                            noteId = note.id,
+                            noteType = note.noteType,
+                            createdAt = note.createdAt,
+                            updatedAt = note.updatedAt,
+                            isFavorite = note.isFavorite,
+                            pinTimestamp = note.pinTimestamp,
+                            folderId = note.folderId,
+                            mindMap = savedMindMap ?: state.mindMap,
+                        )
+                    }
+                }
+            }.launchIn(viewModelScope)
+        }
     }
 
     private fun loadFolders() {
@@ -228,7 +255,6 @@ class NoteDetailViewModel @Inject constructor(
                 noteId = ensuredId,
                 createdAt = createdAt,
                 updatedAt = nowTs,
-                isSaved = false, // S\u1eap l\u01b0u l\u1ea1i khi c\u00f3 mindmap
                 isGeneratingMindMap = true,
                 processingPercent = 0,
                 error = null,
@@ -246,13 +272,11 @@ class NoteDetailViewModel @Inject constructor(
             }
 
             try {
-                // B\u01b0\u1edbc 2: G\u1ecdi use-case sinh mindmap t\u1eeb note hi\u1ec7n t\u1ea1i
                 val rootNode = generateMindMapUseCase(baseNote)
 
                 progressJob.cancel()
                 _uiState.update { it.copy(processingPercent = 90) }
 
-                // B\u01b0\u1edbc 3: L\u01b0u l\u1ea1i note v\u1edbi mindMapJson
                 val mindMapJson = json.encodeToString(MindMapNode.serializer(), rootNode)
                 val noteToSave = baseNote.copy(mindMapJson = mindMapJson)
                 saveNoteUseCase(noteToSave)
@@ -260,13 +284,11 @@ class NoteDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(processingPercent = 100) }
                 delay(300)
 
-                // B\u01b0\u1edbc 4: C\u1eadp nh\u1eadt state \u0111\u1ec3 UI hi\u1ec3n dialog mindmap
                 _uiState.update {
                     it.copy(
                         isGeneratingMindMap = false,
                         mindMap = rootNode,
                         showMindMapDialog = true,
-                        isSaved = true,
                     )
                 }
             } catch (t: Throwable) {
@@ -274,7 +296,7 @@ class NoteDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isGeneratingMindMap = false,
-                        error = "L\u1ed7i t\u1ea1o Mindmap: ${t.message}",
+                        error = "Lỗi tạo Mindmap: ${t.message}",
                     )
                 }
             }
@@ -312,7 +334,7 @@ class NoteDetailViewModel @Inject constructor(
                     mindMapJson = mindMapJson,
                 )
                 saveNoteUseCase(note)
-                _uiState.update { it.copy(isSaved = true, noteId = noteId) }
+                _uiState.update { it.copy(noteId = noteId) }
                 Log.d(TAG_NOTE_DETAIL, "Note saved successfully: id=$noteId")
             } catch (t: Throwable) {
                 Log.e(TAG_NOTE_DETAIL, "Error saving note: ${t.message}", t)

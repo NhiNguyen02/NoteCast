@@ -35,12 +35,14 @@ sealed class Screen(val route: String) {
     }
 
     object NoteDetail : Screen("note_detail") {
+        const val noteIdArg = "noteId"
         const val titleArg = "title"
         const val dateArg = "date"
         const val contentArg = "content"
         const val chunksArg = "chunksJson"
 
         fun createRoute(
+            noteId: String?,
             title: String,
             date: String,
             content: String,
@@ -50,12 +52,18 @@ sealed class Screen(val route: String) {
             val encodedDate = java.net.URLEncoder.encode(date, "UTF-8")
             val encodedContent = java.net.URLEncoder.encode(content, "UTF-8")
             val encodedChunks = java.net.URLEncoder.encode(chunksJson ?: "", "UTF-8")
-            return "note_detail?title=${encodedTitle}&date=${encodedDate}&content=${encodedContent}&chunksJson=${encodedChunks}"
+            val encodedNoteId = java.net.URLEncoder.encode(noteId ?: "", "UTF-8")
+            return "note_detail?noteId=${encodedNoteId}&title=${encodedTitle}&date=${encodedDate}&content=${encodedContent}&chunksJson=${encodedChunks}"
         }
 
-        val routeWithArgs = "note_detail?${titleArg}={${titleArg}}&${dateArg}={${dateArg}}&${contentArg}={${contentArg}}&${chunksArg}={${chunksArg}}"
+        val routeWithArgs =
+            "note_detail?${noteIdArg}={${noteIdArg}}&${titleArg}={${titleArg}}&${dateArg}={${dateArg}}&${contentArg}={${contentArg}}&${chunksArg}={${chunksArg}}"
 
         val arguments = listOf(
+            navArgument(noteIdArg) {
+                type = NavType.StringType
+                defaultValue = ""
+            },
             navArgument(titleArg) {
                 type = NavType.StringType
                 defaultValue = "Ghi chú ghi âm"

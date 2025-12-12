@@ -115,7 +115,8 @@ fun NoteDetailTextScreen(
                     onNormalize = { viewModel.onNormalizeClicked() },
                     onSaveNote = { viewModel.onSaveNote() },
                     onSummarize = { viewModel.onSummarizeClicked() },
-                    onGenerateMindMap = { viewModel.onGenerateMindMapClicked() },
+                    hasMindMap = state.mindMap != null,
+                    onGenerateOrShowMindMap = { viewModel.onGenerateMindMapClicked() },
                 )
             } else {
                 Spacer(modifier = Modifier.height(0.dp))
@@ -244,13 +245,6 @@ fun NoteDetailTextScreen(
 
                 item { Spacer(modifier = Modifier.height(12.dp)) }
             }
-        }
-    }
-
-    // Quan sát isSaved để tự động quay lại (giống NoteEditScreen)
-    LaunchedEffect(state.isSaved) {
-        if (state.isSaved) {
-            onBack()
         }
     }
 

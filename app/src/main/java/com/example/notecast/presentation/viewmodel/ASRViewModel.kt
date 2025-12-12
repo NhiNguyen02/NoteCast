@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notecast.domain.model.AsrResult
 import com.example.notecast.domain.model.ChunkResult
+import com.example.notecast.domain.model.Note
 import com.example.notecast.domain.usecase.asr.TranscribeRecordingUseCase
+import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.net.SocketTimeoutException
 import javax.inject.Inject
+import java.util.UUID
 
 private const val TAG_ASR = "ASRViewModel"
 
@@ -28,13 +31,18 @@ sealed class ASRState {
 @HiltViewModel
 class ASRViewModel @Inject constructor(
     private val transcribeRecordingUseCase: TranscribeRecordingUseCase,
-) : ViewModel() {
+    private val saveNoteUseCase: SaveNoteUseCase,
+    ) : ViewModel() {
 
     private val _state = MutableStateFlow<ASRState>(ASRState.Idle)
     val state: StateFlow<ASRState> = _state.asStateFlow()
 
     private val _transcript = MutableStateFlow("")
     val transcript: StateFlow<String> = _transcript.asStateFlow()
+
+    private val _lastSavedNoteId = MutableStateFlow<String?>(null)
+    val lastSavedNoteId: StateFlow<String?> = _lastSavedNoteId.asStateFlow()
+
 
     /**
      * Remote ASR: upload local audio file to Firebase Storage and call backend PhoWhisper.
@@ -87,5 +95,34 @@ class ASRViewModel @Inject constructor(
     fun resetSession() {
         _transcript.value = ""
         _state.value = ASRState.Idle
+    }
+
+    fun saveVoiceNote(
+        title: String,
+        transcript: String,
+        chunksJson: String?,
+        audioFilePath: String,
+        durationMs: Long?,
+        folderId: String? = null,
+    ) {
+        viewModelScope.launch {
+            val noteId = UUID.randomUUID().toString()
+            val note = Note(
+                id = noteId,                 // để SaveNoteUseCase tự sinh UUID
+                noteType = "VOICE",
+                title = title,
+                content = transcript,
+                rawText = transcript,
+                timestampsJson = chunksJson,
+                filePath = audioFilePath,
+                durationMs = durationMs,
+                createdAt = 0L,         // để UseCase set now
+                updatedAt = 0L,
+                folderId = folderId,
+                // các field khác để default
+            )
+            saveNoteUseCase(note)
+            _lastSavedNoteId.value = noteId
+        }
     }
 }

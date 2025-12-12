@@ -119,6 +119,7 @@ fun MainAppScreen() {
 
                                 appNavController.navigate(
                                     Screen.NoteDetail.createRoute(
+                                        noteId = note.id,
                                         title = title,
                                         date = dateLabel,
                                         content = content,

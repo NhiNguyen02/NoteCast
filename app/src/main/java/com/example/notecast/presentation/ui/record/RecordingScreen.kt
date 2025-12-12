@@ -75,6 +75,7 @@ fun RecordingScreen(
     val amplitude by audioViewModel.amplitude.collectAsState()
 
     val asrState: ASRState by asrViewModel.state.collectAsState()
+    val lastSavedNoteId by asrViewModel.lastSavedNoteId.collectAsState()
 
     var showProcessing by remember { mutableStateOf(false) }
 
@@ -84,8 +85,8 @@ fun RecordingScreen(
             ASRState.Processing -> { showProcessing = true }
             is ASRState.Final -> {
                 showProcessing = false
-                asrViewModel.resetSession()
 
+                // Lưu ý: KHÔNG resetSession trước khi save, để vẫn dùng được state.result
                 val dateLabel = android.text.format.DateFormat
                     .format("yyyy-MM-dd", System.currentTimeMillis())
                     .toString()
@@ -104,6 +105,29 @@ fun RecordingScreen(
                     }
                 } else null
 
+                // --- GỌI saveVoiceNote ĐỂ LƯU NOTE AUDIO VÀO DB ---
+                val audioPath = audioViewModel.currentRecordingFilePath
+                val durationMs = durationMillis
+                if (audioPath != null) {
+                    Log.d(
+                        TAG_RECORDING,
+                        "Calling saveVoiceNote: path=$audioPath, durationMs=$durationMs, textLength=${content.length}"
+                    )
+                    asrViewModel.saveVoiceNote(
+                        title = "Ghi chú ghi âm",
+                        transcript = content,
+                        chunksJson = chunksJson,
+                        audioFilePath = audioPath,
+                        durationMs = durationMs,
+                        folderId = null,
+                    )
+                } else {
+                    Log.w(TAG_RECORDING, "saveVoiceNote skipped because audioPath is null")
+                }
+
+                // Sau khi lưu note, reset session ASR
+                asrViewModel.resetSession()
+
                 Log.d(
                     TAG_RECORDING,
                     "Navigate to NoteDetail: textLength=${content.length}, hasChunks=${chunksJson != null}"
@@ -111,6 +135,7 @@ fun RecordingScreen(
 
                 navController.navigate(
                     Screen.NoteDetail.createRoute(
+                        noteId = lastSavedNoteId,
                         title = "Ghi chú ghi âm",
                         date = dateLabel,
                         content = content,
