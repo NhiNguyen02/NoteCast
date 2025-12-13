@@ -10,9 +10,7 @@ import com.example.notecast.domain.usecase.asr.TranscribeRecordingUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
 import java.net.SocketTimeoutException
@@ -23,7 +21,11 @@ private const val TAG_ASR = "ASRViewModel"
 
 sealed class ASRState {
     object Idle : ASRState()
-    object Processing : ASRState()
+    /**
+     * Optional progress percent for long-running operations such as ASR.
+     * If null, UI can choose to show indeterminate spinner.
+     */
+    data class Processing(val percent: Int? = null) : ASRState()
     data class Final(val result: AsrResult) : ASRState()
     data class Error(val msg: String) : ASRState()
 }
@@ -40,6 +42,19 @@ class ASRViewModel @Inject constructor(
     private val _transcript = MutableStateFlow("")
     val transcript: StateFlow<String> = _transcript.asStateFlow()
 
+    // Derived progress percent for consumers that only care about progress
+    val progressPercent: StateFlow<Int> = _state
+        .map { state ->
+            when (state) {
+                is ASRState.Processing -> state.percent ?: 0
+                else -> 0
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
 
     /**
      * Remote ASR: upload local audio file to Firebase Storage and call backend PhoWhisper.
@@ -56,8 +71,12 @@ class ASRViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                _state.value = ASRState.Processing
+                // start with 0%
+                _state.value = ASRState.Processing(percent = 0)
                 val result = transcribeRecordingUseCase(file)
+
+                // once done, we can briefly set it to 100% before Final if desired
+                _state.value = ASRState.Processing(percent = 100)
 
                 // --- LOG CHI TIẾT DỮ LIỆU TRẢ VỀ TỪ BACKEND ---
                 Log.d(

@@ -46,6 +46,7 @@ import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.Red
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
+import com.example.notecast.presentation.ui.dialog.ProcessingType
 import com.example.notecast.presentation.viewmodel.ASRState
 import com.example.notecast.presentation.viewmodel.AudioViewModel
 import com.example.notecast.presentation.viewmodel.RecorderState
@@ -77,6 +78,8 @@ fun RecordingScreen(
     val amplitude by audioViewModel.amplitude.collectAsState()
 
     val asrState: ASRState by asrViewModel.state.collectAsState()
+    // observe processing percent from ASR view model
+    val asrPercent by asrViewModel.progressPercent.collectAsState()
 
     // Reuse global folder state that already loads all folders
     val folderState by folderViewModel.state.collectAsState()
@@ -87,7 +90,7 @@ fun RecordingScreen(
     LaunchedEffect(asrState) {
         when (val state = asrState) {
             ASRState.Idle -> { showProcessing = false }
-            ASRState.Processing -> { showProcessing = true }
+            is ASRState.Processing -> { showProcessing = true }
             is ASRState.Final -> {
                 showProcessing = false
 
@@ -224,36 +227,36 @@ fun RecordingScreen(
                         )
                     }
                 },
-                actions = {
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.padding(end = 6.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AddBox,
-                                contentDescription = "Thêm",
-                                tint = PrimaryAccent,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                            offset = DpOffset(x = (-8).dp, y = 8.dp)
-                        ) {
-                            folders.forEach { folder: Folder ->
-                                DropdownMenuItem(
-                                    text = { Text(folder.name) },
-                                    onClick = {
-                                        // TODO: gắn logic chọn folder cho bản ghi hiện tại (nếu cần)
-                                        showMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                },
+//                actions = {
+//                    Box {
+//                        IconButton(
+//                            onClick = { showMenu = true },
+//                            modifier = Modifier.padding(end = 6.dp)
+//                        ) {
+//                            Icon(
+//                                Icons.Default.AddBox,
+//                                contentDescription = "Thêm",
+//                                tint = PrimaryAccent,
+//                                modifier = Modifier.size(18.dp)
+//                            )
+//                        }
+//                        DropdownMenu(
+//                            expanded = showMenu,
+//                            onDismissRequest = { showMenu = false },
+//                            offset = DpOffset(x = (-8).dp, y = 8.dp)
+//                        ) {
+//                            folders.forEach { folder: Folder ->
+//                                DropdownMenuItem(
+//                                    text = { Text(folder.name) },
+//                                    onClick = {
+//                                        // TODO: gắn logic chọn folder cho bản ghi hiện tại (nếu cần)
+//                                        showMenu = false
+//                                    }
+//                                )
+//                            }
+//                        }
+//                    }
+//                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
 
@@ -492,7 +495,12 @@ fun RecordingScreen(
         }
 
         if (showProcessing) {
-            ProcessingDialog(onDismissRequest = { }, percent = 0, step = 1)
+            ProcessingDialog(
+                percent = asrPercent,
+                step = 1,
+                type = ProcessingType.Asr,
+                onDismissRequest = { }
+            )
         }
 
         ExitConfirm(

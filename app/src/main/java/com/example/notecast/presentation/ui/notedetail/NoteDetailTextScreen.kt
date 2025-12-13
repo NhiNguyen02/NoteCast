@@ -22,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.presentation.theme.*
 import com.example.notecast.presentation.viewmodel.NoteDetailViewModel
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
+import com.example.notecast.presentation.ui.dialog.ProcessingType
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import kotlinx.coroutines.delay
 import androidx.media3.exoplayer.ExoPlayer
@@ -114,7 +115,7 @@ fun NoteDetailTextScreen(
                 folderId = folderId,
                 availableFolders = availableFolders,
                 onFolderSelected = { folder -> viewModel.onFolderSelected(folder) },
-                onSaveClick = {viewModel.onSaveNote()},
+                onSaveClick = { viewModel.onSaveNote() },
                 onBack = onBack,
             )
         },
@@ -133,7 +134,6 @@ fun NoteDetailTextScreen(
                 isNormalizing = state.isNormalizing,
                 hasMindMap = state.mindMap != null,
                 onSummarize = { showSummaryDialog = true },
-//                onSummarize = { viewModel.onSummarizeClicked() },
                 onNormalize = { viewModel.onNormalizeClicked() },
                 onMindMap = { viewModel.onGenerateMindMapClicked() }
             )
@@ -280,7 +280,27 @@ fun NoteDetailTextScreen(
         ProcessingDialog(
             percent = state.processingPercent,
             step = 1,
+            type = ProcessingType.MindMap,
             onDismissRequest = { /* không cho hủy hoặc xử lý theo ý bạn */ }
+        )
+    }
+
+    // Show normalizing processing dialog giống NoteEditScreen
+    if (state.isNormalizing) {
+        ProcessingDialog(
+            percent = state.processingPercent,
+            step = 1,
+            type = ProcessingType.Normalize,
+            onDismissRequest = { }
+        )
+    }
+
+    if (state.isSummarizing) {
+        ProcessingDialog(
+            percent = state.processingPercent,
+            step = 1,
+            type = ProcessingType.Summarize,
+            onDismissRequest = { }
         )
     }
 
@@ -290,7 +310,6 @@ fun NoteDetailTextScreen(
             isProcessing = state.isSummarizing,
             error = state.error,
             onStart = {
-                // trigger tóm tắt cho detail
                 viewModel.onSummarizeClicked()
             },
             onDismiss = {

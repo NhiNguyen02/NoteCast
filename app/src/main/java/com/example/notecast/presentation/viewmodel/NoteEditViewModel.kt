@@ -15,6 +15,7 @@ import com.example.notecast.presentation.ui.noteeditscreen.NoteEditState
 import com.example.notecast.domain.usecase.postprocess.NormalizationResult
 import com.example.notecast.domain.usecase.postprocess.NormalizeNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +43,8 @@ class NoteEditViewModel @Inject constructor(
 
     private val noteIdArg: String? = savedStateHandle["noteId"]
     private val jsonParser = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+    private var summarizeProgressJob: Job? = null
 
     init {
         loadFolders()
@@ -139,12 +142,28 @@ class NoteEditViewModel @Inject constructor(
                 // Prevent duplicate calls
                 if (_state.value.isSummarizing) return
 
+                summarizeProgressJob?.cancel()
+
                 viewModelScope.launch {
-                    _state.update { it.copy(isSummarizing = true, error = null) }
+                    _state.update { it.copy(isSummarizing = true, processingPercent = 0, error = null) }
+
+                    summarizeProgressJob = launch {
+                        var p = 0
+                        while (p < 85 && _state.value.isSummarizing) {
+                            delay(180)
+                            p += (3..7).random()
+                            _state.update { it.copy(processingPercent = p.coerceAtMost(85)) }
+                        }
+                    }
+
                     try {
                         val contentToSummarize = _state.value.content
                         val summary = summarizeNoteUseCase(contentToSummarize)
-                        // Append summary to content (keeps original). Adjust as needed.
+
+                        summarizeProgressJob?.cancel()
+                        _state.update { it.copy(processingPercent = 100) }
+                        delay(220)
+
                         _state.update {
                             it.copy(
                                 isSummarizing = false,
@@ -152,6 +171,7 @@ class NoteEditViewModel @Inject constructor(
                             )
                         }
                     } catch (e: Exception) {
+                        summarizeProgressJob?.cancel()
                         _state.update {
                             it.copy(
                                 isSummarizing = false,

@@ -20,10 +20,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.presentation.ui.common_components.NoteInfoAndActions
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
+import com.example.notecast.presentation.ui.dialog.ProcessingType
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.viewmodel.NoteEditViewModel
 import com.example.notecast.utils.formatNoteDate
-import com.example.notecast.presentation.ui.dialog.SummaryDialog
 
 /**
  * Màn hình Sửa/Tạo Ghi chú (Đã kết nối ViewModel thật)
@@ -83,7 +83,6 @@ fun NoteEditScreen(
                     // open the in-file summary dialog, which will call the ViewModel
                     onSummarize = { showSummaryDialog = true },
                     onMindMap = { viewModel.onEvent(NoteEditEvent.OnGenerateMindMap) },
-//                    onNormalize = { viewModel.onEvent(NoteEditEvent.OnNormalize) },
                     )
 
                 Column(
@@ -165,23 +164,6 @@ fun NoteEditScreen(
         }
     }
 
-    // Summary dialog (in-file) - opens when user taps Tóm tắt chip
-    if (showSummaryDialog) {
-        SummaryDialog(
-            noteContent = state.content,
-            isProcessing = state.isSummarizing,
-            error = state.error,
-            onStart = {
-                // trigger ViewModel summarization
-                viewModel.onEvent(NoteEditEvent.OnSummarize)
-            },
-            onDismiss = {
-                showSummaryDialog = false
-            },
-            contentAfter = state.content
-        )
-    }
-
     if (state.showMindMapDialog && state.mindMapData != null) {
         MindMapDialog(
             rootNode = state.mindMapData!!,
@@ -190,23 +172,28 @@ fun NoteEditScreen(
 
     }
     if (state.isGeneratingMindMap) {
-        // Sử dụng ProcessingDialog bạn đã có
         ProcessingDialog(
             percent = state.processingPercent,
-            step = 1, // Hoặc số bước tùy logic của dialog bạn
-            onDismissRequest = {
-                // Tùy chọn: Có cho phép hủy khi đang tạo không?
-                // Nếu không, để trống hoặc không làm gì
-            }
+            step = 1,
+            type = ProcessingType.MindMap,
+            onDismissRequest = { }
         )
     }
     if (state.isNormalizing){
         ProcessingDialog(
             percent = state.processingPercent,
             step = 1,
+            type = ProcessingType.Normalize,
             onDismissRequest = {}
+        )
+    }
+    if (state.isSummarizing) {
+        ProcessingDialog(
+            percent = state.processingPercent,
+            step = 1,
+            type = ProcessingType.Summarize,
+            onDismissRequest = { }
         )
     }
 
 }
-

@@ -4,6 +4,7 @@ import android.Manifest
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.util.Log
 import androidx.annotation.RequiresPermission
 
 /**
@@ -15,6 +16,8 @@ import androidx.annotation.RequiresPermission
  * - audioFormat = ENCODING_PCM_16BIT
  * Changing these may break VAD/ASR pipeline expectations (MelProcessor, hopLength/winLength, etc.).
  */
+private const val TAG_RECORDER = "AudioRecorder"
+
 class AudioRecorder(
     private val sampleRate: Int = 16_000,
     private val channelConfig: Int = AudioFormat.CHANNEL_IN_MONO,
@@ -34,15 +37,21 @@ class AudioRecorder(
         require(audioFormat == AudioFormat.ENCODING_PCM_16BIT) { "AudioRecorder must use PCM_16BIT (got $audioFormat)" }
 
         val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-        val bufferSizeInBytes = minBuffer.coerceAtLeast(sampleRate / 10 * 2) // ~100ms
+        Log.d(TAG_RECORDER, "createAudioRecord: sr=$sampleRate, ch=$channelConfig, fmt=$audioFormat, minBuffer=$minBuffer")
+        if (minBuffer == AudioRecord.ERROR || minBuffer == AudioRecord.ERROR_BAD_VALUE) {
+            Log.e(TAG_RECORDER, "createAudioRecord: getMinBufferSize error=$minBuffer")
+        }
 
-        return AudioRecord(
+        val bufferSizeInBytes = minBuffer.coerceAtLeast(sampleRate / 10 * 2) // ~100ms
+        val record = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             sampleRate,
             channelConfig,
             audioFormat,
             bufferSizeInBytes
         )
+        Log.d(TAG_RECORDER, "createAudioRecord: state=${record.state}")
+        return record
     }
 
     /**
@@ -57,15 +66,23 @@ class AudioRecorder(
         if (isRecording) return
         val record = createAudioRecord()
         audioRecord = record
-
+        Log.d(TAG_RECORDER, "start: state=${record.state}")
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            Log.e(TAG_RECORDER, "start: AudioRecord NOT initialized, state=${record.state}")
+            return
+        }
         val buffer = ShortArray(frameSize)
+        Log.d(TAG_RECORDER, "start: recordingState=${record.recordingState}")
         record.startRecording()
         isRecording = true
 
         try {
             while (isRecording) {
                 val read = record.read(buffer, 0, buffer.size)
-                if (read <= 0) continue
+                if (read <= 0) {
+                    Log.w(TAG_RECORDER, "read() returned $read")
+                    continue
+                }
                 val frame = if (read == buffer.size) buffer.copyOf() else buffer.copyOf(read)
                 onFrame(frame)
             }

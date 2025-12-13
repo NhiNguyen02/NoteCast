@@ -8,12 +8,16 @@ import com.example.notecast.domain.model.ChunkResult
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.domain.model.MindMapNode
 import com.example.notecast.domain.model.Note
+import com.example.notecast.domain.model.ProcessedTextData
 import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
 import com.example.notecast.domain.usecase.notefolder.GetNoteByIdUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.GenerateMindMapUseCase
+import com.example.notecast.domain.usecase.postprocess.NormalizationResult
+import com.example.notecast.domain.usecase.postprocess.NormalizeNoteUseCase
 import com.example.notecast.domain.usecase.postprocess.SummarizeNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +42,7 @@ class NoteDetailViewModel @Inject constructor(
     private val saveNoteUseCase: SaveNoteUseCase,
     private val generateMindMapUseCase: GenerateMindMapUseCase,
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
+    private val normalizeNoteUseCase: NormalizeNoteUseCase,
     getNoteByIdUseCase: GetNoteByIdUseCase,
     savedStateHandle: SavedStateHandle,
     private val summarizeNoteUseCase: SummarizeNoteUseCase,
@@ -69,16 +74,25 @@ class NoteDetailViewModel @Inject constructor(
         val isSummarizing: Boolean = false,
         val isGeneratingMindMap: Boolean = false,
         val processingPercent: Int = 0,
+        // New: distinguish which process is active if needed
+        val activeProcess: ActiveProcess? = null,
         val mindMap: MindMapNode? = null,
+        val processedTextData: ProcessedTextData? = null,
         val showMindMapDialog: Boolean = false,
         // Trạng thái lỗi
         val error: String? = null,
     )
 
+    // Identify current long-running process for better UI mapping
+    enum class ActiveProcess { NORMALIZE, SUMMARIZE, MINDMAP }
+
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+    // progress jobs
+    private var summarizeProgressJob: Job? = null
 
     init {
         // Lấy noteId từ route NoteDetailText: "note_detail_text/{noteId}"
@@ -167,49 +181,93 @@ class NoteDetailViewModel @Inject constructor(
     }
 
     fun onNormalizeClicked() {
-        val current = _uiState.value
-        if (current.content.isBlank() || current.isNormalizing) return
+        val originalContent = _uiState.value.content
+        if (originalContent.isBlank()) return
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isNormalizing = true, error = null) }
-            try {
-                val normalized = current.content.trim()
-                _uiState.update { it.copy(content = normalized, isNormalizing = false) }
-            } catch (t: Throwable) {
-                _uiState.update { it.copy(isNormalizing = false, error = t.message) }
+            // optional: you can also add a separate progress job like mind map if needed later
+            _uiState.update { it.copy(isNormalizing = true, activeProcess = ActiveProcess.NORMALIZE, error = null) }
+
+            normalizeNoteUseCase(originalContent).collect { result ->
+                when (result) {
+                    // 1. Giai đoạn Preview (Heuristic)
+                    is NormalizationResult.Preview -> {
+                        _uiState.update {
+                            it.copy(
+                                content = result.text,
+                                isNormalizing = true,
+                                activeProcess = ActiveProcess.NORMALIZE
+                            )
+                        }
+                    }
+                    // 2. Giai đoạn Success (AI trả về Object Data)
+                    is NormalizationResult.Success -> {
+                        val aiData = result.data
+                        _uiState.update {
+                            it.copy(
+                                content = aiData.normalizedText,
+                                processedTextData = aiData,
+                                isNormalizing = false,
+                                activeProcess = null,
+                                mindMap = null
+                            )
+                        }
+                    }
+                    // 3. Giai đoạn Lỗi
+                    is NormalizationResult.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isNormalizing = false,
+                                activeProcess = null,
+                                error = "Lỗi chuẩn hóa, dùng bản nháp.",
+                                content = result.text
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 
     fun onSummarizeClicked() {
-//        val current = _uiState.value
-//        if (current.content.isBlank() || current.isSummarizing) return
-//        viewModelScope.launch {
-//            _uiState.update { it.copy(isSummarizing = true, error = null) }
-//            try {
-//                val summary = current.content + "\n\n[Tóm tắt]: Nội dung đã được tóm tắt."
-//                _uiState.update { it.copy(content = summary, isSummarizing = false) }
-//            } catch (t: Throwable) {
-//                _uiState.update { it.copy(isSummarizing = false, error = t.message) }
-//            }
-//        }
         if (_uiState.value.isSummarizing) return
 
+        // start a progress job similar to mind map: ramp 0..85 until real result
+        summarizeProgressJob?.cancel()
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isSummarizing = true, error = null) }
+            _uiState.update { it.copy(isSummarizing = true, activeProcess = ActiveProcess.SUMMARIZE, processingPercent = 0, error = null) }
+
+            summarizeProgressJob = launch {
+                var p = 0
+                while (p < 85 && _uiState.value.isSummarizing) {
+                    delay(180)
+                    p += (3..7).random()
+                    _uiState.update { it.copy(processingPercent = p.coerceAtMost(85)) }
+                }
+            }
+
             try {
                 val contentToSummarize = _uiState.value.content
                 val summary = summarizeNoteUseCase(contentToSummarize)
-                // Append summary to content (keeps original). Adjust as needed.
+
+                summarizeProgressJob?.cancel()
+                _uiState.update { it.copy(processingPercent = 100) }
+                delay(220)
+
                 _uiState.update {
                     it.copy(
                         isSummarizing = false,
+                        activeProcess = null,
                         content = it.content + "\n\n[Tóm tắt]:\n" + summary
                     )
                 }
             } catch (e: Exception) {
+                summarizeProgressJob?.cancel()
                 _uiState.update {
                     it.copy(
                         isSummarizing = false,
+                        activeProcess = null,
                         error = "Lỗi tóm tắt: ${e.message ?: "Không xác định"}"
                     )
                 }
@@ -249,6 +307,7 @@ class NoteDetailViewModel @Inject constructor(
                 updatedAt = nowTs,
                 isGeneratingMindMap = true,
                 processingPercent = 0,
+                activeProcess = ActiveProcess.MINDMAP,
                 error = null,
             )
         }
@@ -262,7 +321,6 @@ class NoteDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(processingPercent = p.coerceAtMost(85)) }
                 }
             }
-
             try {
                 val rootNode = generateMindMapUseCase(baseNote)
 
@@ -279,6 +337,7 @@ class NoteDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isGeneratingMindMap = false,
+                        activeProcess = null,
                         mindMap = rootNode,
                         showMindMapDialog = true,
                     )
@@ -288,7 +347,8 @@ class NoteDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isGeneratingMindMap = false,
-                        error = "Lỗi tạo Mindmap: ${t.message}",
+                        activeProcess = null,
+                        error = "Lỗi tạo MindMap: ${t.message}"
                     )
                 }
             }
