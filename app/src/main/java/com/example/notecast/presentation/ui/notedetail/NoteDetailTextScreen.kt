@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -128,7 +130,11 @@ fun NoteDetailTextScreen(
                 .background(Background)
         ) {
             // Divider + Tabs (fixed)
-            HorizontalDivider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth())
+            HorizontalDivider(
+                color = Color(0xffE5E7EB),
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
             NoteInfoAndActions(
                 isProcessing = state.isSummarizing,
                 isNormalizing = state.isNormalizing,
@@ -137,7 +143,11 @@ fun NoteDetailTextScreen(
                 onNormalize = { viewModel.onNormalizeClicked() },
                 onMindMap = { viewModel.onGenerateMindMapClicked() }
             )
-            HorizontalDivider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth())
+            HorizontalDivider(
+                color = Color(0xffE5E7EB),
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
             Column(
                 modifier = Modifier
                     .padding(16.dp),
@@ -174,24 +184,53 @@ fun NoteDetailTextScreen(
                     color = Color.Gray,
                 )
             }
-            HorizontalDivider(color = Color(0xffE5E7EB), thickness = 1.dp, modifier = Modifier.fillMaxWidth())
+            HorizontalDivider(
+                color = Color(0xffE5E7EB),
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(14.dp))
             Row(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Column(modifier = Modifier.padding(end = 24.dp).clickable { selectedTab = 0 }) {
-                    Text("Văn bản", style = TextStyle(fontSize = 14.sp, fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Medium, color = if (selectedTab == 0) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)))
+                    Text(
+                        "Văn bản",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selectedTab == 0) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = 0.5f
+                            )
+                        )
+                    )
                     Spacer(modifier = Modifier.height(6.dp))
-                    if (selectedTab == 0) Box(modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp)).background(gradientBottom))
+                    if (selectedTab == 0) Box(
+                        modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp))
+                            .background(gradientBottom)
+                    )
                 }
                 Column(modifier = Modifier.padding(end = 24.dp).clickable { selectedTab = 1 }) {
-                    Text("Âm thanh", style = TextStyle(fontSize = 14.sp, fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Medium, color = if (selectedTab == 1) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)))
+                    Text(
+                        "Âm thanh",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selectedTab == 1) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = 0.5f
+                            )
+                        )
+                    )
                     Spacer(modifier = Modifier.height(6.dp))
-                    if (selectedTab == 1) Box(modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp)).background(gradientBottom))
+                    if (selectedTab == 1) Box(
+                        modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp))
+                            .background(gradientBottom)
+                    )
                 }
             }
             // CONTENT (scrollable area only). Pass scaffold paddingValues as contentPadding so LazyColumn
             // respects bottomBar height (prevents content from extending under bottom bar).
             LazyColumn(
                 state = listState,
+                userScrollEnabled = selectedTab != 0,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
@@ -199,15 +238,16 @@ fun NoteDetailTextScreen(
             ) {
                 item {
                     if (selectedTab == 0) {
-                        // Simple non-scrollable card; LazyColumn handles scrolling
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
+                                .fillParentMaxHeight() // ✅ FIX 1: chiếm full height
                                 .clip(RoundedCornerShape(12.dp))
-                                .weight(1f)
                                 .background(Color.White.copy(0.5f))
                                 .padding(horizontal = 20.dp, vertical = 12.dp)
                         ) {
+                            val scrollState = rememberScrollState()
+
                             BasicTextField(
                                 value = content,
                                 onValueChange = { viewModel.onContentChanged(it) },
@@ -226,7 +266,9 @@ fun NoteDetailTextScreen(
                                     }
                                     innerTextField()
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(scrollState) //
                             )
                         }
                     } else {
@@ -254,69 +296,66 @@ fun NoteDetailTextScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            TranscriptionDisplay(
-                                chunks = chunks,
-                            )
+                            TranscriptionDisplay(chunks = chunks)
                         }
                     }
                 }
 
                 item { Spacer(modifier = Modifier.height(12.dp)) }
             }
+
+            // Mind map dialog giống NoteEditScreen
+            val mindMap = state.mindMap
+            if (state.showMindMapDialog && mindMap != null) {
+                MindMapDialog(
+                    rootNode = mindMap,
+                    onDismiss = { viewModel.onCloseMindMapDialog() }
+                )
+            }
+
+            // Processing dialog cho mind map
+            if (state.isGeneratingMindMap) {
+                ProcessingDialog(
+                    percent = state.processingPercent,
+                    step = 1,
+                    type = ProcessingType.MindMap,
+                    onDismissRequest = { /* không cho hủy hoặc xử lý theo ý bạn */ }
+                )
+            }
+        }
+        // Show normalizing processing dialog giống NoteEditScreen
+        if (state.isNormalizing) {
+            ProcessingDialog(
+                percent = state.processingPercent,
+                step = 1,
+                type = ProcessingType.Normalize,
+                onDismissRequest = { }
+            )
+        }
+
+        if (state.isSummarizing) {
+            ProcessingDialog(
+                percent = state.processingPercent,
+                step = 1,
+                type = ProcessingType.Summarize,
+                onDismissRequest = { }
+            )
+        }
+
+        if (showSummaryDialog) {
+            SummaryDialog(
+                noteContent = state.content,
+                isProcessing = state.isSummarizing,
+                error = state.error,
+                onStart = {
+                    viewModel.onSummarizeClicked()
+                },
+                onDismiss = {
+                    showSummaryDialog = false
+                },
+                contentAfter = state.content
+            )
         }
     }
-
-    // Mind map dialog giống NoteEditScreen
-    val mindMap = state.mindMap
-    if (state.showMindMapDialog && mindMap != null) {
-        MindMapDialog(
-            rootNode = mindMap,
-            onDismiss = { viewModel.onCloseMindMapDialog() }
-        )
-    }
-
-    // Processing dialog cho mind map
-    if (state.isGeneratingMindMap) {
-        ProcessingDialog(
-            percent = state.processingPercent,
-            step = 1,
-            type = ProcessingType.MindMap,
-            onDismissRequest = { /* không cho hủy hoặc xử lý theo ý bạn */ }
-        )
-    }
-
-    // Show normalizing processing dialog giống NoteEditScreen
-    if (state.isNormalizing) {
-        ProcessingDialog(
-            percent = state.processingPercent,
-            step = 1,
-            type = ProcessingType.Normalize,
-            onDismissRequest = { }
-        )
-    }
-
-    if (state.isSummarizing) {
-        ProcessingDialog(
-            percent = state.processingPercent,
-            step = 1,
-            type = ProcessingType.Summarize,
-            onDismissRequest = { }
-        )
-    }
-
-    if (showSummaryDialog) {
-        SummaryDialog(
-            noteContent = state.content,
-            isProcessing = state.isSummarizing,
-            error = state.error,
-            onStart = {
-                viewModel.onSummarizeClicked()
-            },
-            onDismiss = {
-                showSummaryDialog = false
-            },
-            contentAfter = state.content
-        )
-    }
-
 }
+
