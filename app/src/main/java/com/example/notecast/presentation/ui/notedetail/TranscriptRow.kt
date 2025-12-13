@@ -20,6 +20,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.notecast.presentation.theme.Blue
+import com.example.notecast.presentation.theme.BluePurple
 
 @Composable
 fun TranscriptRow(time: String, text: String) {
@@ -28,7 +30,7 @@ fun TranscriptRow(time: String, text: String) {
             modifier = Modifier
                 .size(width = 56.dp, height = 28.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(Brush.horizontalGradient(listOf(Color(0xFFB96CFF), Color(0xFF8A4BFF))))
+                .background(Brush.horizontalGradient(listOf(BluePurple, Blue)))
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
         ) {

@@ -93,7 +93,7 @@ fun HomeScreenContent(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(Modifier.height(16.dp))
+//            Spacer(Modifier.height(16.dp))
             // --- HEADER ---
             HomeTopAppBar(
                 isSelectionMode = isSelectionMode,
@@ -106,7 +106,7 @@ fun HomeScreenContent(
                 onSelectAllClick = onSelectAllClick,
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+//            Spacer(modifier = Modifier.height(20.dp))
 
             // --- SEARCH BAR ---
             Row(
@@ -152,7 +152,7 @@ fun HomeScreenContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // --- BUTTONS ROW ---
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -194,7 +194,7 @@ fun HomeScreenContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // --- CONTENT LIST ---
             if (state.isLoading) {

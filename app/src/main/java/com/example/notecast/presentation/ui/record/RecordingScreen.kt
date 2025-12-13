@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Pause
@@ -34,14 +33,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.notecast.domain.model.AsrResult
-import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.Red
@@ -223,7 +220,7 @@ fun RecordingScreen(
                             Icons.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = PrimaryAccent,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 },
@@ -312,7 +309,7 @@ fun RecordingScreen(
                     else -> {
                         Text(
                             text = "Nhấn nút ghi âm để bắt đầu thu âm",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = Color.Gray.copy(alpha = 0.7f),
                             fontSize = 13.sp
                         )
                     }
@@ -327,6 +324,7 @@ fun RecordingScreen(
                     .height(240.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(PrimaryAccent.copy(alpha = 0.08f))
+                    .padding(horizontal = 16.dp)
             ) {
                 WaveformVisualizer(
                     waveform = waveform,
@@ -487,7 +485,7 @@ fun RecordingScreen(
                     },
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                    color = Color.Gray.copy(alpha = 0.7f)
                 )
             }
 

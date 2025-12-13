@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.notecast.presentation.theme.TitleBrush
 import com.example.notecast.presentation.ui.common_components.NoteInfoAndActions
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
 import com.example.notecast.presentation.ui.dialog.ProcessingType
@@ -83,14 +84,13 @@ fun NoteEditScreen(
                     // open the in-file summary dialog, which will call the ViewModel
                     onSummarize = { showSummaryDialog = true },
                     onMindMap = { viewModel.onEvent(NoteEditEvent.OnGenerateMindMap) },
-                    )
+                )
 
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
                 ) {
-                    // --- Ô nhập Tiêu đề ---
                     BasicTextField(
                         value = state.title,
                         onValueChange = { newTitle ->
@@ -99,17 +99,34 @@ fun NoteEditScreen(
                         textStyle = TextStyle(
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.Transparent // ẩn màu chữ thật, ta sẽ vẽ bằng brush
                         ),
+                        cursorBrush = TitleBrush, // bạn đã dùng ở NoteDetailTextScreen
                         decorationBox = { innerTextField ->
-                            if (state.title.isEmpty()) {
-                                Text("Tiêu đề...",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Gray.copy(alpha = 0.5f)
-                                )
+                            Box {
+                                if (state.title.isEmpty()) {
+                                    // Placeholder bình thường
+                                    Text(
+                                        text = "Tiêu đề...",
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Gray.copy(alpha = 0.5f)
+                                    )
+                                } else {
+                                    // Vẽ text bằng brush gradient
+                                    Text(
+                                        text = state.title,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        style = TextStyle(
+                                            brush = TitleBrush  // hỗ trợ từ compose ui-text 1.6.0+
+                                        )
+                                    )
+                                }
+
+                                // Field thật để nhận input + cursor, nhưng chữ của nó là transparent
+                                innerTextField()
                             }
-                            innerTextField()
                         },
                         modifier = Modifier
                             .fillMaxWidth()

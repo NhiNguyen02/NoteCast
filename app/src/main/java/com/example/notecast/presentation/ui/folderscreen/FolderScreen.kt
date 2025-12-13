@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.ui.dialog.CreateFolderDialog
-import com.example.notecast.presentation.ui.dialog.FolderColors
 import com.example.notecast.presentation.ui.dialog.SelectFolderDialog // <-- IMPORT DIALOG CHỌN
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.theme.TitleBrush
@@ -33,6 +32,7 @@ import com.example.notecast.presentation.ui.common_components.NoteCard
 // Import NoteSelectionBar (nếu bạn để ở homescreen package)
 import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
 import androidx.core.graphics.toColorInt
+import com.example.notecast.presentation.theme.folderColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,9 +74,9 @@ fun FolderScreen(
     // Helper Hex -> Color
     fun hexToColor(hex: String?): Color {
         return try {
-            if (hex.isNullOrBlank()) FolderColors.first()
+            if (hex.isNullOrBlank()) folderColors.first()
             else Color(hex.toColorInt())
-        } catch (_: Exception) { FolderColors.first() }
+        } catch (_: Exception) { folderColors.first() }
     }
 
     Scaffold(

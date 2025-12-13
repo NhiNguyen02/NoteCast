@@ -43,7 +43,7 @@ fun NoteEditTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBackClick) {
-                Icon(Icons.Filled.ArrowBackIos, contentDescription = "Quay lại", tint = Purple)
+                Icon(Icons.Filled.ArrowBackIos, contentDescription = "Quay lại", tint = Purple,modifier = Modifier.size(24.dp))
             }
         },
         actions = {

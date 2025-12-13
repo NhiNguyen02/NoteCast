@@ -101,9 +101,6 @@ fun NoteDetailTextScreen(
         Log.d("NoteDetailTextScreen", "Loaded audio: filePath=$filePath, durationMs=$durationMs")
     }
 
-    // colors/gradients
-    val gradientTop = Color(0xFFB96CFF)
-    val gradientMiddle = Color(0xFF8A4BFF)
     val gradientBottom = Color(0xFF6A2CFF)
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -143,11 +140,6 @@ fun NoteDetailTextScreen(
                 onNormalize = { viewModel.onNormalizeClicked() },
                 onMindMap = { viewModel.onGenerateMindMapClicked() }
             )
-            HorizontalDivider(
-                color = Color(0xffE5E7EB),
-                thickness = 1.dp,
-                modifier = Modifier.fillMaxWidth()
-            )
             Column(
                 modifier = Modifier
                     .padding(16.dp),
@@ -161,18 +153,34 @@ fun NoteDetailTextScreen(
                     textStyle = TextStyle(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = Color.Transparent // ẩn màu chữ thật, ta sẽ vẽ bằng brush
                     ),
+                    cursorBrush = TitleBrush, // bạn đã dùng ở NoteDetailTextScreen
                     decorationBox = { innerTextField ->
-                        if (state.title.isEmpty()) {
-                            Text(
-                                "Tiêu đề...",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Gray.copy(alpha = 0.5f)
-                            )
+                        Box {
+                            if (state.title.isEmpty()) {
+                                // Placeholder bình thường
+                                Text(
+                                    text = "Tiêu đề...",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Gray.copy(alpha = 0.5f)
+                                )
+                            } else {
+                                // Vẽ text bằng brush gradient
+                                Text(
+                                    text = state.title,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    style = TextStyle(
+                                        brush = TitleBrush  // hỗ trợ từ compose ui-text 1.6.0+
+                                    )
+                                )
+                            }
+
+                            // Field thật để nhận input + cursor, nhưng chữ của nó là transparent
+                            innerTextField()
                         }
-                        innerTextField()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -197,15 +205,15 @@ fun NoteDetailTextScreen(
                         style = TextStyle(
                             fontSize = 14.sp,
                             fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (selectedTab == 0) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(
-                                alpha = 0.5f
+                            color = if (selectedTab == 0) SubTitleColor else MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = 0.8f
                             )
                         )
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     if (selectedTab == 0) Box(
                         modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp))
-                            .background(gradientBottom)
+                            .background(SubTitleColor)
                     )
                 }
                 Column(modifier = Modifier.padding(end = 24.dp).clickable { selectedTab = 1 }) {
@@ -214,15 +222,15 @@ fun NoteDetailTextScreen(
                         style = TextStyle(
                             fontSize = 14.sp,
                             fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (selectedTab == 1) gradientBottom else MaterialTheme.colorScheme.onSurface.copy(
-                                alpha = 0.5f
+                            color = if (selectedTab == 1) SubTitleColor else MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = 0.8f
                             )
                         )
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     if (selectedTab == 1) Box(
                         modifier = Modifier.height(3.dp).width(56.dp).clip(RoundedCornerShape(4.dp))
-                            .background(gradientBottom)
+                            .background(SubTitleColor)
                     )
                 }
             }
@@ -290,8 +298,6 @@ fun NoteDetailTextScreen(
                                 },
                                 progress = if (hasValidAudio) progress else 0f,
                                 totalSeconds = if (hasValidAudio) totalSeconds else 0,
-                                gradientTop = gradientTop,
-                                gradientMiddle = gradientMiddle,
                             )
 
                             Spacer(modifier = Modifier.height(14.dp))

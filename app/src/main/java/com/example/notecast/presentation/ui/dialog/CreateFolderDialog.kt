@@ -14,20 +14,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
-
-// --- Hằng số UI ---
-val FolderColors = listOf(
-    Color(0xFF1E90FF), // Xanh dương
-    Color(0xFF3CB371), // Xanh lá
-    Color(0xFFFF8C00), // Cam
-    Color(0xFFDC143C), // Đỏ tươi
-    Color(0xFF9370DB)  // Tím nhạt
-)
+import com.example.notecast.presentation.theme.folderColors
 
 @Composable
 fun CreateFolderDialog(
@@ -35,7 +26,7 @@ fun CreateFolderDialog(
     onConfirm: (name: String, color: Color) -> Unit,
     // 1. THÊM CÁC THAM SỐ ĐỂ HỖ TRỢ SỬA (có giá trị mặc định cho lúc Tạo mới)
     initialName: String = "",
-    initialColor: Color = FolderColors.first(),
+    initialColor: Color = folderColors.first(),
     title: String = "Tạo thư mục mới",
     confirmButtonText: String = "Tạo thư mục"
 ) {
@@ -114,7 +105,7 @@ fun CreateFolderDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FolderColors.forEach { color ->
+                folderColors.forEach { color ->
                     ColorCircle(
                         color = color,
                         isSelected = color == selectedColor,

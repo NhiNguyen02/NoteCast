@@ -90,7 +90,7 @@ val MenuBackgroundBrush = Brush.linearGradient(
 )
 
 val TabButton1Brush = Brush.verticalGradient(
-    colors = listOf(Color(0xFFC2D1EC), Color(0xFF6A92C8))
+    colors = listOf(Color(0xFFC2D1EC), Color(0xFF6A92C8)),
 )
 
 val TabButton2Brush = Brush.verticalGradient(
@@ -117,4 +117,146 @@ val FooterGradientBrush = Brush.verticalGradient(
         Color(0xFF8A4BFF),
         Color(0xFF6A2CFF)
     )
+)
+
+// --- Khai báo từng màu riêng lẻ ---
+
+// Menace
+val MenaceDark = Color(0xFF362025)
+val MenaceMedium = Color(0xFF75A39D)
+
+// Unchanging
+val UnchangingDark = Color(0xFF451B3E)
+val UnchangingMedium = Color(0xFF7D3C7D)
+
+// Always
+val AlwaysDark = Color(0xFF7D0E45)
+val AlwaysMedium = Color(0xFFAD1D52)
+
+// Encased
+val EncasedDark = Color(0xFF383036)
+val EncasedMedium = Color(0xFF52543D)
+
+// Paradise
+val ParadiseDark = Color(0xFF751C42)
+val ParadiseMedium = Color(0xFFD15E69)
+
+// Sunrise
+val SunriseDark = Color(0xFF63242C)
+val SunriseMedium = Color(0xFF8A333B)
+
+// Day By Day
+val DayByDayDark = Color(0xFF855757)
+val DayByDayMedium = Color(0xFFAB7575)
+
+// Existence
+val ExistenceDark = Color(0xFF8F1313)
+val ExistenceMedium = Color(0xFFCC2929)
+
+// Sentry
+val SentryDark = Color(0xFF300D0B)
+val SentryMedium = Color(0xFF0F71A6)
+
+// Never
+val NeverDark = Color(0xFF292B2B)
+val NeverMedium = Color(0xFF366173)
+
+// Honor
+val HonorDark = Color(0xFF965F6B)
+val HonorMedium = Color(0xFFC27A84)
+
+// Hollow
+val HollowDark = Color(0xFF3B1B47)
+val HollowMedium = Color(0xFF0078A6)
+
+// Speak To Me
+val SpeakToMeDark = Color(0xFF1F203B)
+val SpeakToMeMedium = Color(0xFF692B73)
+
+// Mimic
+val MimicDark = Color(0xFF94141A)
+val MimicMedium = Color(0xFFBD2426)
+
+// Origin
+val OriginDark = Color(0xFF0D4036)
+val OriginMedium = Color(0xFF246961)
+
+// Welcome
+val WelcomeDark = Color(0xFF4D1214)
+val WelcomeMedium = Color(0xFF94291F)
+
+// Friendly Fire
+val FriendlyFireDark = Color(0xFF571230)
+val FriendlyFireMedium = Color(0xFF731C4A)
+
+// Creations
+val CreationsDark = Color(0xFF52062E)
+val CreationsMedium = Color(0xFFE31E5E)
+
+
+// --- Nhóm lại thành folderColors ---
+
+// Định nghĩa data class để giữ cặp màu (nếu chưa có)
+data class FolderPalette(
+    val name: String,
+    val darkColor: Color,
+    val mediumColor: Color
+)
+
+// Danh sách các nhóm màu
+val folderColors = listOf(
+    MenaceDark,
+    MenaceMedium,
+    UnchangingDark,
+    UnchangingMedium,
+    AlwaysDark,
+    AlwaysMedium,
+    EncasedDark,
+    EncasedMedium,
+    ParadiseDark,
+    ParadiseMedium,
+    SunriseDark,
+    SunriseMedium,
+    DayByDayDark,
+    DayByDayMedium,
+    ExistenceDark,
+    ExistenceMedium,
+    SentryDark,
+    SentryMedium,
+    NeverDark,
+    NeverMedium,
+    HonorDark,
+    HonorMedium,
+    HollowDark,
+    HollowMedium,
+    SpeakToMeDark,
+    SpeakToMeMedium,
+    MimicDark,
+    MimicMedium,
+    OriginDark,
+    OriginMedium,
+    WelcomeDark,
+    WelcomeMedium,
+    FriendlyFireDark,
+    FriendlyFireMedium,
+    CreationsDark,
+    CreationsMedium
+//    FolderPalette("Menace", MenaceDark, MenaceMedium),
+//    FolderPalette("Unchanging", UnchangingDark, UnchangingMedium),
+//    FolderPalette("Always", AlwaysDark, AlwaysMedium),
+//    FolderPalette("Encased", EncasedDark, EncasedMedium),
+//    FolderPalette("Paradise", ParadiseDark, ParadiseMedium),
+//    FolderPalette("Sunrise", SunriseDark, SunriseMedium),
+//    FolderPalette("Day By Day", DayByDayDark, DayByDayMedium),
+//    FolderPalette("Existence", ExistenceDark, ExistenceMedium),
+//    FolderPalette("Sentry", SentryDark, SentryMedium),
+//    FolderPalette("Never", NeverDark, NeverMedium),
+//    FolderPalette("Honor", HonorDark, HonorMedium),
+//    FolderPalette("Hollow", HollowDark, HollowMedium),
+//    FolderPalette("Speak To Me", SpeakToMeDark, SpeakToMeMedium),
+//    FolderPalette("Mimic", MimicDark, MimicMedium),
+//    FolderPalette("Origin", OriginDark, OriginMedium),
+//    FolderPalette("Welcome", WelcomeDark, WelcomeMedium),
+//    FolderPalette("Friendly Fire", FriendlyFireDark, FriendlyFireMedium),
+//    FolderPalette("Creations", CreationsDark, CreationsMedium)
 )

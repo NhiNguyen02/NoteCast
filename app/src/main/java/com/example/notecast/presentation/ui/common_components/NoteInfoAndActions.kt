@@ -7,7 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Pageview
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.notecast.R
-import com.example.notecast.presentation.theme.PopUpBackgroundBrush
+import com.example.notecast.presentation.theme.TabButton3Brush
 import com.example.notecast.presentation.ui.noteeditscreen.ActionChip
 
 @Composable
@@ -36,16 +36,6 @@ fun NoteInfoAndActions(
     ) {
         item {
             ActionChip(
-                leadingIcon = painterResource(R.drawable.file_text), // Đảm bảo có icon
-                label = "Tóm tắt",
-                onClick = onSummarize,
-                isLoading = isProcessing,
-                backgroundBrush = PopUpBackgroundBrush,
-                labelColor = Color.White,
-            )
-        }
-        item {
-            ActionChip(
                 label = "Chuẩn hóa",
                 leadingIcon = rememberVectorPainter(Icons.Outlined.AutoFixHigh),
                 onClick = onNormalize,
@@ -56,6 +46,16 @@ fun NoteInfoAndActions(
                     1.0f to Color(0xff7532FB),
                 ),
                 labelColor = Color.White
+            )
+        }
+        item {
+            ActionChip(
+                leadingIcon = painterResource(R.drawable.file_text), // Đảm bảo có icon
+                label = "Tóm tắt",
+                onClick = onSummarize,
+                isLoading = isProcessing,
+                backgroundBrush = TabButton3Brush,
+                labelColor = Color(0xff307FE3),
             )
         }
         item {
@@ -75,5 +75,9 @@ fun NoteInfoAndActions(
             )
         }
     }
-    Divider(thickness = 1.dp, color = Color(0xffE5E7EB))
+    HorizontalDivider(
+        color = Color(0xffE5E7EB),
+        thickness = 1.dp,
+        modifier = Modifier.fillMaxWidth()
+    )
 }

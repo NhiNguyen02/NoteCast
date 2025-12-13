@@ -4,16 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,16 +19,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.notecast.presentation.theme.MainButtonBrush
+import com.example.notecast.presentation.theme.SubTitleColor
 import com.example.notecast.utils.formatTime
 
 @Composable
@@ -46,8 +37,6 @@ fun AudioDisplay(
     onTogglePlay: () -> Unit,
     progress: Float,
     totalSeconds: Int,
-    gradientTop: Color,
-    gradientMiddle: Color,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -58,78 +47,58 @@ fun AudioDisplay(
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-//            Text(
-//                "File âm thanh",
-//                style = TextStyle(
-//                    fontSize = 16.sp,
-//                    fontWeight = FontWeight.SemiBold,
-//                    color = Color(0xFF5D1AAE)
-//                )
-//            )
-//            Spacer(modifier = Modifier.height(12.dp))
-
             // Controls row (prev / big play / next)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFF1E7FF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.SkipPrevious,
-                        contentDescription = "Prev",
-                        tint = gradientMiddle,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                Icon(
+                    Icons.Default.SkipPrevious,
+                    contentDescription = "Prev",
+                    tint = SubTitleColor,
+                    modifier = Modifier.size(36.dp)
+                )
                 Spacer(modifier = Modifier.width(18.dp))
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .shadow(elevation = 8.dp, shape = CircleShape)
                         .clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(gradientTop, gradientMiddle))),
+                        .background(Color.Transparent)
+                        .border(BorderStroke(4.dp, MainButtonBrush), shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    IconButton(onClick = onTogglePlay) {
+                    IconButton(
+                        onClick = onTogglePlay,
+                        colors = androidx.compose.material3.IconButtonDefaults.iconButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = SubTitleColor
+                        )
+                    ) {
                         if (isPlaying) {
                             Icon(
                                 Icons.Default.Pause,
                                 contentDescription = "Pause",
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier
+                                    .size(54.dp).padding(4.dp)
                             )
                         } else {
                             Icon(
                                 Icons.Default.PlayArrow,
                                 contentDescription = "Play",
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier
+                                    .size(54.dp).padding(4.dp)
                             )
                         }
                     }
                 }
                 Spacer(modifier = Modifier.width(18.dp))
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFF1E7FF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.SkipNext,
-                        contentDescription = "Next",
-                        tint = gradientMiddle,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                Icon(
+                    Icons.Default.SkipNext,
+                    contentDescription = "Next",
+                    tint = SubTitleColor,
+                    modifier = Modifier.size(36.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -151,12 +120,17 @@ fun AudioDisplay(
                 )
                 val clamped = progress.coerceIn(0f, 1f)
                 val filledW = size.width * clamped
+                val audioDisplayBrush = Brush.linearGradient(
+                    colors = listOf(Color(0xFF00D2FF), Color(0xFF307FE3), Color(0xFF7532FB), Color(0xFF8A4AE1)),
+                    start = Offset(0f, 0f),
+                    end = Offset(filledW, 0f)   // gradient chạy theo chiều dài phần đã fill
+                )
                 if (filledW > 0f) {
                     drawRoundRect(
-                        brush = Brush.horizontalGradient(listOf(Color(0xFFB96CFF), gradientMiddle)),
+                        brush = audioDisplayBrush,
                         topLeft = Offset(0f, 0f),
                         size = Size(filledW, trackH),
-                        cornerRadius = corner
+                        cornerRadius = corner,
                     )
                 }
                 val thumbR = 7.dp.toPx()

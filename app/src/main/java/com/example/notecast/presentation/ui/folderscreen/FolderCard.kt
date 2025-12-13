@@ -39,7 +39,7 @@ fun FolderCard(
         return try {
             if (hex.isNullOrBlank()) PrimaryAccent
             else Color(AndroidColor.parseColor(hex))
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             PrimaryAccent
         }
     }

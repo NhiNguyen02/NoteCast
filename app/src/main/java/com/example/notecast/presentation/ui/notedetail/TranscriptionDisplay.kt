@@ -23,17 +23,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.notecast.presentation.theme.SubTitleColor
 import com.example.notecast.utils.formatTime
 @Composable
 fun TranscriptionDisplay(
     chunks: List<com.example.notecast.domain.model.ChunkResult>,
-//    transcriptCardHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
-//            .height(transcriptCardHeight)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(0.5f))
             .padding(horizontal = 20.dp, vertical = 12.dp)
@@ -47,7 +46,7 @@ fun TranscriptionDisplay(
                 style = TextStyle(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF5D1AAE)
+                    color = SubTitleColor
                 )
             )
             Spacer(modifier = Modifier.height(12.dp))
