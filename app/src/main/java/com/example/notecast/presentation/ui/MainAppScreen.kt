@@ -77,6 +77,7 @@ fun MainAppScreen() {
             AppDrawerContent(
                 drawerState = drawerState,
                 currentRoute = visualSelectedRoute,
+                onGoogleLoginClick = {},
                 onNavigate = { route ->
                     visualSelectedRoute = route
                     appNavController.navigate(route) {

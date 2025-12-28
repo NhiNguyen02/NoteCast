@@ -11,4 +11,8 @@ interface PreferencesRepository {
 
     val hasSeenOnboarding: Flow<Boolean>
     suspend fun setSeenOnboarding(seen: Boolean)
+
+
+    val isLoginCompleted: Flow<Boolean>
+    suspend fun setLoginCompleted(completed: Boolean)
 }

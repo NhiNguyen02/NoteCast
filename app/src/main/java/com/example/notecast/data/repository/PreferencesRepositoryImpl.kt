@@ -16,7 +16,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 @Singleton
 class PreferencesRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
 ) : PreferencesRepository {
 
     private val dataStore = context.dataStore
@@ -26,6 +26,7 @@ class PreferencesRepositoryImpl @Inject constructor(
         val IS_ONBOARDING_COMPLETED = booleanPreferencesKey("is_onboarding_completed")
         val SUMMARY_MODEL = stringPreferencesKey("summary_model")
         val HAS_SEEN_ONBOARDING = booleanPreferencesKey("has_seen_onboarding")
+        val IS_LOGIN_COMPLETED = booleanPreferencesKey("is_login_completed")
     }
 
     override val hasSeenOnboarding: Flow<Boolean> = dataStore.data
@@ -58,6 +59,17 @@ class PreferencesRepositoryImpl @Inject constructor(
     override suspend fun setSummaryModel(model: String) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.SUMMARY_MODEL] = model
+        }
+    }
+
+    override val isLoginCompleted: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_LOGIN_COMPLETED] ?: false
+        }
+
+    override suspend fun setLoginCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_LOGIN_COMPLETED] = completed
         }
     }
 }
