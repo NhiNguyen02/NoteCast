@@ -92,41 +92,48 @@ class NoteListViewModel @Inject constructor(
                 searchMatch && typeMatch && statusMatch && folderMatch
             }
 
-            // Sắp xếp (Sort)
-            processingList = when (state.sortOptions.sortBy) {
+            // ===== SẮP XẾP (SORT) =====
+            // 1️⃣ Sort theo rule người dùng chọn
+            val sortedByRule: List<NoteDomain> = when (state.sortOptions.sortBy) {
+
                 SortBy.DATE_UPDATED -> {
                     if (state.sortOptions.direction == SortDirection.DESCENDING)
                         processingList.sortedByDescending { it.updatedAt }
                     else
                         processingList.sortedBy { it.updatedAt }
                 }
+
                 SortBy.DATE_CREATED -> {
                     if (state.sortOptions.direction == SortDirection.DESCENDING)
                         processingList.sortedByDescending { it.createdAt }
                     else
                         processingList.sortedBy { it.createdAt }
                 }
+
                 SortBy.TITLE -> {
                     if (state.sortOptions.direction == SortDirection.DESCENDING)
                         processingList.sortedByDescending { it.title ?: "" }
                     else
                         processingList.sortedBy { it.title ?: "" }
                 }
-                SortBy.PINNED_FIRST -> {
-                    // Pinned trước, sau đó theo updatedAt desc
-                    processingList.sortedWith(
-                        compareByDescending<NoteDomain> { it.isPinned }
-                            .thenByDescending { it.updatedAt }
-                    )
-                }
+
                 SortBy.FAVORITE_FIRST -> {
-                    // Favorite trước, sau đó theo updatedAt desc
                     processingList.sortedWith(
                         compareByDescending<NoteDomain> { it.isFavorite }
                             .thenByDescending { it.updatedAt }
                     )
                 }
+
+                // PINNED_FIRST chỉ ảnh hưởng thứ tự BÊN TRONG,
+                // pin toàn cục sẽ xử lý ở bước 2
+                SortBy.PINNED_FIRST -> processingList
             }
+
+            // 2️⃣ LUÔN ưu tiên PIN (bất kể sort gì)
+            processingList = sortedByRule.sortedWith(
+                compareByDescending<NoteDomain> { it.isPinned }
+                    .thenByDescending { it.updatedAt }
+            )
 
             state.copy(
                 isLoading = false,
@@ -166,16 +173,27 @@ class NoteListViewModel @Inject constructor(
             }
             is NoteListEvent.OnToggleFavorite -> {
                 viewModelScope.launch {
-                    val updatedNote = event.note.copy(isFavorite = !event.note.isFavorite)
+                    val currentNote = _state.value.allNotes
+                        .firstOrNull { it.id == event.noteId }
+                        ?: return@launch
+                    val updatedNote = currentNote.copy(
+                        isFavorite = !currentNote.isFavorite
+                    )
                     saveNoteUseCase(updatedNote)
-                    Log.d("NoteListVM", "Toggled favorite for note ${event.note.id}: isFavorite=${updatedNote.isFavorite}")
                 }
             }
             is NoteListEvent.OnTogglePin -> {
                 viewModelScope.launch {
-                    val updatedNote = event.note.copy(isPinned = !event.note.isPinned)
-                    saveNoteUseCase(updatedNote)
-                    Log.d("NoteListVM", "Toggled pin for note ${event.note.id}: isPinned=${updatedNote.isPinned}")
+                    viewModelScope.launch {
+                        val currentNote = _state.value.allNotes
+                            .firstOrNull { it.id == event.noteId }
+                            ?: return@launch
+
+                        val updatedNote = currentNote.copy(
+                            isPinned = !currentNote.isPinned
+                        )
+                        saveNoteUseCase(updatedNote)
+                    }
                 }
             }
         }

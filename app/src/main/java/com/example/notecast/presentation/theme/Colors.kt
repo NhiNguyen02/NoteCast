@@ -83,10 +83,13 @@ val MainButtonBrush = Brush.verticalGradient(
     )
 )
 
-val MenuBackgroundBrush = Brush.linearGradient(
-    colors = listOf(Color(0xFF00D2FF), Color(0xFF307FE3), Color(0xFF7532FB), Color(0xFF8A4AE1)),
-    start = Offset.Zero,
-    end = Offset(0f, 1000f)
+val MenuBackgroundBrush = Brush.horizontalGradient(
+    colors = listOf(
+        Color(0xFF00D2FF),
+        Color(0xFF307FE3),
+        Color(0xFF7532FB),
+        Color(0xFF8A4AE1)
+    )
 )
 
 val TabButton1Brush = Brush.verticalGradient(

@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.notecast.domain.model.AudioChunk
@@ -70,10 +71,12 @@ fun TranscriptionDisplay(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = chunk.text,
-                        style = MaterialTheme.typography.bodyMedium.copy(color = Color.Black)
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Color.Black),
+                        textAlign = TextAlign.Justify
                     )
                 }
             }
         }
+        Spacer(modifier = Modifier.weight(1f))
     }
 }

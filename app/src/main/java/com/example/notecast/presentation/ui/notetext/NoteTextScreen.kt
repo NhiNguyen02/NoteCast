@@ -1,5 +1,6 @@
 package com.example.notecast.presentation.ui.notetext
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,6 +30,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.res.painterResource
+import com.example.notecast.R
+import com.example.notecast.presentation.theme.*
 import com.example.notecast.presentation.viewmodel.NoteAudioViewModel
 
 /**
@@ -55,171 +59,181 @@ fun NoteTextScreen(
     var showMindmapDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    Scaffold(
-        topBar = {
-            NoteEditTopBar(
-                onBackClick = onNavigateBack,
-                // Nút Lưu gọi sự kiện OnSaveNote
-                onSaveClick = { viewModel.onEvent(NoteEditEvent.OnSaveNote) },
-                folderId = state.folderId,
-                availableFolders = state.availableFolders,
-                onFolderSelected = { folder ->
-                    viewModel.onEvent(NoteEditEvent.OnFolderSelected(folder))
-                }
-            )
-        },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-
-        if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            // Nội dung chính
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                HorizontalDivider(thickness = 1.dp, color = Color(0xffE5E7EB))
-
-                // Các nút chức năng (Tóm tắt, Chuẩn hóa...)
-                NoteInfoAndActions(
-                    isProcessing = state.isNormalizing || state.isSummarizing || state.isGeneratingMindMap,
-                    hasMindMap = state.mindMapData != null,
-                    currentStep = when {
-                        state.isGeneratingMindMap -> NoteAudioViewModel.ProcessingStep.MINDMAP
-                        state.isSummarizing      -> NoteAudioViewModel.ProcessingStep.SUMMARIZING
-                        state.isNormalizing      -> NoteAudioViewModel.ProcessingStep.NORMALIZING
-                        else                     -> NoteAudioViewModel.ProcessingStep.DONE
-                    },
-                    onRegenerateAll = {
-                        // với text note, gọi normalize + summary + mindmap
-                        viewModel.onEvent(NoteEditEvent.OnNormalize)
-                        viewModel.onEvent(NoteEditEvent.OnSummarize)
-                        viewModel.onEvent(NoteEditEvent.OnGenerateMindMap)
-                    },
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                NoteEditTopBar(
+                    onBackClick = onNavigateBack,
+                    // Nút Lưu gọi sự kiện OnSaveNote
+                    onSaveClick = { viewModel.onEvent(NoteEditEvent.OnSaveNote) },
+                    folderId = state.folderId,
+                    availableFolders = state.availableFolders,
+                    onFolderSelected = { folder ->
+                        viewModel.onEvent(NoteEditEvent.OnFolderSelected(folder))
+                    }
                 )
-
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                // Nội dung chính
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(paddingValues)
+                        .background(Background)
                 ) {
-                    // Title + date
-                    BasicTextField(
-                        value = state.title,
-                        onValueChange = { newTitle ->
-                            viewModel.onEvent(NoteEditEvent.OnTitleChanged(newTitle))
+                    HorizontalDivider(
+                        color = Color(0xffE5E7EB),
+                        thickness = 1.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    // Các nút chức năng (Tóm tắt, Chuẩn hóa...)
+                    NoteInfoAndActions(
+                        isProcessing = state.isNormalizing || state.isSummarizing || state.isGeneratingMindMap,
+                        hasMindMap = state.mindMapData != null,
+                        currentStep = when {
+                            state.isGeneratingMindMap -> NoteAudioViewModel.ProcessingStep.MINDMAP
+                            state.isSummarizing -> NoteAudioViewModel.ProcessingStep.SUMMARIZING
+                            state.isNormalizing -> NoteAudioViewModel.ProcessingStep.NORMALIZING
+                            else -> NoteAudioViewModel.ProcessingStep.DONE
                         },
-                        textStyle = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Transparent // ẩn màu chữ thật, ta sẽ vẽ bằng brush
-                        ),
-                        cursorBrush = TitleBrush, // bạn đã dùng ở NoteDetailTextScreen
-                        decorationBox = { innerTextField ->
-                            Box {
-                                if (state.title.isEmpty()) {
-                                    // Placeholder bình thường
+                        onRegenerateAll = {
+                            // với text note, gọi normalize + summary + mindmap
+                            viewModel.onEvent(NoteEditEvent.OnNormalize)
+                            viewModel.onEvent(NoteEditEvent.OnSummarize)
+                            viewModel.onEvent(NoteEditEvent.OnGenerateMindMap)
+                        },
+                    )
+
+                    Column(
+                        modifier = Modifier
+                    ) {
+                        // Title + date
+                        BasicTextField(
+                            value = state.title,
+                            onValueChange = { newTitle ->
+                                viewModel.onEvent(NoteEditEvent.OnTitleChanged(newTitle))
+                            },
+                            textStyle = TextStyle(
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Transparent // ẩn màu chữ thật, ta sẽ vẽ bằng brush
+                            ),
+                            cursorBrush = TitleBrush, // bạn đã dùng ở NoteDetailTextScreen
+                            decorationBox = { innerTextField ->
+                                Box {
+                                    if (state.title.isEmpty()) {
+                                        // Placeholder bình thường
+                                        Text(
+                                            text = "Tiêu đề...",
+                                            fontSize = 24.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.Gray.copy(alpha = 0.5f)
+                                        )
+                                    } else {
+                                        // Vẽ text bằng brush gradient
+                                        Text(
+                                            text = state.title,
+                                            fontSize = 24.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            style = TextStyle(
+                                                brush = TitleBrush  // hỗ trợ từ compose ui-text 1.6.0+
+                                            )
+                                        )
+                                    }
+                                    // Field thật để nhận input + cursor, nhưng chữ của nó là transparent
+                                    innerTextField()
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp, bottom = 5.dp)
+                                .padding(horizontal = 16.dp)
+                        )
+
+                        // Ngày giờ (Tạm thời lấy giờ hiện tại hoặc từ state nếu có)
+                        Text(
+                            text = formatNoteDate(state.updatedAt),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 16.dp)
+                        )
+                        HorizontalDivider(
+                            color = Color(0xffE5E7EB),
+                            thickness = 1.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        // Tabs row (horizontally scrollable)
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 24.dp)
+                                .horizontalScroll(tabScrollState)
+                        ) {
+                            tabs.forEachIndexed { index, label ->
+                                Column(
+                                    modifier = Modifier
+                                        .padding(end = 24.dp)
+                                        .clickable { selectedTab = index }
+                                ) {
                                     Text(
-                                        text = "Tiêu đề...",
-                                        fontSize = 24.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Gray.copy(alpha = 0.5f)
-                                    )
-                                } else {
-                                    // Vẽ text bằng brush gradient
-                                    Text(
-                                        text = state.title,
-                                        fontSize = 24.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        label,
                                         style = TextStyle(
-                                            brush = TitleBrush  // hỗ trợ từ compose ui-text 1.6.0+
+                                            fontSize = 14.sp,
+                                            fontWeight = if (selectedTab == index)
+                                                FontWeight.SemiBold else FontWeight.Medium,
+                                            color = if (selectedTab == index)
+                                                SubTitleColor
+                                            else
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                                         )
                                     )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    if (selectedTab == index) {
+                                        Box(
+                                            modifier = Modifier
+                                                .height(3.dp)
+                                                .width(56.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(SubTitleColor)
+                                        )
+                                    }
                                 }
-
-                                // Field thật để nhận input + cursor, nhưng chữ của nó là transparent
-                                innerTextField()
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 5.dp)
-                    )
-
-                    // Ngày giờ (Tạm thời lấy giờ hiện tại hoặc từ state nếu có)
-                    Text(
-                        text = formatNoteDate(state.updatedAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 20.dp)
-                    )
-
-                    // Tabs row (horizontally scrollable)
-                    Row(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .horizontalScroll(tabScrollState)
-                    ) {
-                        tabs.forEachIndexed { index, label ->
-                            Column(
-                                modifier = Modifier
-                                    .padding(end = 16.dp)
-                                    .clickable { selectedTab = index }
-                            ) {
-                                Text(
-                                    label,
-                                    style = TextStyle(
-                                        fontSize = 14.sp,
-                                        fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Medium,
-                                        color = if (selectedTab == index) Color(0xFF374151) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                                    )
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                if (selectedTab == index) Box(
-                                    modifier = Modifier
-                                        .height(3.dp)
-                                        .width(56.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0xFF374151))
-                                )
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentPadding = PaddingValues(12.dp)
-                    ) {
-                        item {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                        ) {
                             when (selectedTab) {
 
                                 // ===== TAB VĂN BẢN =====
                                 0 -> {
+                                    val scrollState = rememberScrollState()
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .fillParentMaxHeight() // ⭐ QUAN TRỌNG
+                                            .fillMaxSize()
+                                            .padding(12.dp)
                                             .clip(RoundedCornerShape(12.dp))
                                             .background(Color.White.copy(0.5f))
-                                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                                            .verticalScroll(scrollState)
+                                            .padding(20.dp)
                                     ) {
-                                        val scrollState = rememberScrollState()
-
                                         BasicTextField(
                                             value = state.content,
                                             onValueChange = {
-                                                viewModel.onEvent(
-                                                    NoteEditEvent.OnContentChanged(it)
-                                                )
+                                                viewModel.onEvent(NoteEditEvent.OnContentChanged(it))
                                             },
                                             textStyle = TextStyle(
                                                 fontSize = 16.sp,
@@ -236,9 +250,7 @@ fun NoteTextScreen(
                                                 }
                                                 innerTextField()
                                             },
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .verticalScroll(scrollState) // ✅ scroll nội bộ
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                     }
                                 }
@@ -247,13 +259,16 @@ fun NoteTextScreen(
                                 1 -> {
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
+                                            .fillMaxSize()
+                                            .padding(12.dp)
                                             .clip(RoundedCornerShape(12.dp))
                                             .background(Color.White.copy(0.5f))
-                                            .padding(16.dp)
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(20.dp),
                                     ) {
                                         Text(
                                             text = state.summary ?: "Chưa có tóm tắt.",
+                                            fontSize = 16.sp,
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = if (state.summary != null) Color.Black else Color.Gray
                                         )
@@ -264,10 +279,10 @@ fun NoteTextScreen(
                                 2 -> {
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.White.copy(0.5f))
-                                            .padding(16.dp)
+                                            .fillMaxSize()
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         if (state.keywords.isEmpty()) {
                                             Text(
@@ -279,10 +294,19 @@ fun NoteTextScreen(
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
-                                                state.keywords.forEach { kw ->
+                                                state.keywords.forEach {
                                                     AssistChip(
                                                         onClick = {},
-                                                        label = { Text(kw) }
+                                                        enabled = false,
+                                                        label = { Text(it) },
+                                                        colors = AssistChipDefaults.assistChipColors(
+                                                            labelColor = Color.Black,
+                                                            disabledLabelColor = Color.Black,
+                                                        ),
+                                                        border = BorderStroke(
+                                                            width = 1.dp,
+                                                            color = Color.Black.copy(alpha = 0.2f)
+                                                        )
                                                     )
                                                 }
                                             }
@@ -294,19 +318,20 @@ fun NoteTextScreen(
                                 3 -> {
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.White.copy(0.5f))
-                                            .padding(16.dp)
+                                            .fillMaxSize()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         val mindMap = state.mindMapData
                                         if (mindMap != null) {
-                                            Text(
-                                                "Nhấn để xem mindmap chi tiết.",
-                                                color = Color(0xFF374151),
-                                                modifier = Modifier.clickable {
-                                                    showMindmapDialog = true
-                                                }
+                                            ActionChip(
+                                                label = "Xem mindmap chi tiết",
+                                                leadingIcon = painterResource(R.drawable.mindmap_map_svgrepo_com),
+                                                onClick = { showMindmapDialog = true },
+                                                enabled = true,
+                                                isLoading = false,
+                                                backgroundBrush = MenuBackgroundBrush,
+                                                labelColor = Color.White
                                             )
                                         } else {
                                             Text(
@@ -318,8 +343,6 @@ fun NoteTextScreen(
                                 }
                             }
                         }
-
-                        item { Spacer(modifier = Modifier.height(12.dp)) }
                     }
                 }
             }

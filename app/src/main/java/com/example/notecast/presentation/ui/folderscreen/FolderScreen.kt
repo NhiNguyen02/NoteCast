@@ -191,7 +191,6 @@ fun FolderScreen(
                                 note = note,
                                 folderName = openedFolder!!.name,
                                 folderColor = currentFolderColor,
-                                // Logic chọn Note
                                 isSelectionMode = isNoteSelectionMode,
                                 isSelected = isSelected,
                                 onLongClick = {
@@ -206,16 +205,16 @@ fun FolderScreen(
                                         else selectedNoteIds.add(note.id)
                                         if (selectedNoteIds.isEmpty()) isNoteSelectionMode = false
                                     } else {
-                                        onNoteClick(note.id) // Mở chi tiết note
+                                        onNoteClick(note.id)
                                     }
                                 },
-                                onEvent = { event ->
-                                    when (event) {
-                                        is NoteListEvent.OnToggleFavorite -> viewModel.toggleFavorite(event.note)
-                                        is NoteListEvent.OnTogglePin      -> viewModel.togglePin(event.note)
-                                        else                             -> Unit
-                                    }
+
+                                onTogglePin = { noteId ->
+                                    viewModel.togglePin(noteId)
                                 },
+                                onToggleFavorite = { noteId ->
+                                    viewModel.toggleFavorite(noteId)
+                                }
                             )
                         }
                     }

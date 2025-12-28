@@ -41,7 +41,8 @@ fun NoteCard(
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onEvent: (NoteListEvent) -> Unit,
+    onTogglePin: (String) -> Unit,
+    onToggleFavorite: (String) -> Unit,
 ) {
     val iconRes = if (note.type == NoteType.AUDIO) R.drawable.outline_mic_24 else R.drawable.file_text
     val cardBorder = if (isSelected) BorderStroke(2.dp, PrimaryAccent) else null
@@ -138,7 +139,7 @@ fun NoteCard(
                     Row {
                         // Pin icon
                         IconButton(
-                            onClick = { onEvent(NoteListEvent.OnTogglePin(note)) },
+                            onClick = { onTogglePin(note.id) },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
@@ -153,7 +154,7 @@ fun NoteCard(
 
                         // Favorite icon
                         IconButton(
-                            onClick = { onEvent(NoteListEvent.OnToggleFavorite(note)) },
+                            onClick = { onToggleFavorite(note.id) },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
