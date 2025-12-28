@@ -84,9 +84,9 @@ fun SortScreen(
     val lightWhite22 = Color.White.copy(alpha = 0.22f)
     val cardHeight = 72.dp
     val titleTextStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF222222))
-    val subtitleTextStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+    val subtitleTextStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, color = TextNoteColor)
     val sectionHeadingStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryAccentDark)
-    val sectionCountStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+    val sectionCountStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, color = TextNoteColor)
 
     Box(
         modifier = Modifier
@@ -172,7 +172,7 @@ fun SortScreen(
             // FOOTER
             Box(modifier = Modifier.fillMaxWidth().background(brush = FooterGradientBrush)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding, vertical = 14.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     // Nút Hủy

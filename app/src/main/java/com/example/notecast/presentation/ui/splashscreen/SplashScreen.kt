@@ -38,11 +38,12 @@ fun SplashScreen(
         delay(2000)
 
         val hasSeenOnboarding = preferences.hasSeenOnboarding.first()
+        val isLoginCompleted = preferences.isLoginCompleted.first()
         // Kiểm tra xem đã xem onboarding chưa
-        val route = if (hasSeenOnboarding) {
-            Screen.Main.route //
-        } else {
-            Screen.Onboarding.route
+        val route = when {
+            !hasSeenOnboarding -> Screen.Onboarding.route // Chưa xem HD -> Onboarding
+            !isLoginCompleted -> Screen.Login.route       // Xem HD rồi, chưa Login -> Login
+            else -> Screen.Main.route                     // Xong hết -> Main
         }
 
         navController.navigate(route) {

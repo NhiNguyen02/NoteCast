@@ -1,5 +1,6 @@
 package com.example.notecast.presentation.ui.notetext
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -31,17 +33,24 @@ fun ActionChip(
     label: String,
     leadingIcon: Painter,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     isLoading: Boolean = false,
     backgroundBrush: Brush,
     labelColor: Color
 ) {
     val chipShape = RoundedCornerShape(8.dp)
+
+    val alpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.6f,
+        label = "chip-alpha"
+    )
+
     Surface(
         shape = chipShape,
         shadowElevation = 2.dp,
         modifier = Modifier
             .height(32.dp)
-            .clickable(enabled = !isLoading, onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
     ) {
         Box(
             modifier = Modifier.background(brush = backgroundBrush),
@@ -56,7 +65,7 @@ fun ActionChip(
                 Icon(
                     painter = leadingIcon,
                     contentDescription = label,
-                    tint = labelColor,
+                    tint = labelColor.copy(alpha = alpha),
                     modifier = Modifier.size(20.dp)
                 )
                 if (isLoading) {
@@ -65,10 +74,10 @@ fun ActionChip(
                     CircularProgressIndicator(
                         Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = labelColor
+                        color = labelColor.copy(alpha = alpha)
                     )
                 } else {
-                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = labelColor)
+                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = labelColor.copy(alpha = alpha))
                 }
             }
         }

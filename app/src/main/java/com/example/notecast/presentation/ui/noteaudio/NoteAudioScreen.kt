@@ -1,6 +1,7 @@
 package com.example.notecast.presentation.ui.noteaudio
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -11,6 +12,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -23,13 +25,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import com.example.notecast.presentation.theme.*
 import com.example.notecast.presentation.viewmodel.NoteAudioViewModel
 import com.example.notecast.presentation.ui.dialog.SavedNotificationDialog
 import com.example.notecast.presentation.ui.mindmap.MindMapDialog
 import com.example.notecast.presentation.ui.common_components.NoteInfoAndActions
+import com.example.notecast.presentation.ui.notetext.ActionChip
 import com.example.notecast.utils.formatNoteDate
 import kotlinx.coroutines.delay
+import com.example.notecast.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -354,7 +359,8 @@ fun NoteAudioScreen(
                             ) {
                                 Text(
                                     text = state.summary ?: "Chưa có tóm tắt.",
-                                    color = Color.Black
+                                    color = Color.Black,
+                                    textAlign = TextAlign.Justify
                                 )
                             }
                         }
@@ -373,7 +379,19 @@ fun NoteAudioScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     state.keywords.forEach {
-                                        AssistChip(onClick = {}, label = { Text(it) })
+                                        AssistChip(
+                                            onClick = {},
+                                            enabled = false,
+                                            label = { Text(it) },
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                labelColor = Color.Black,
+                                                disabledLabelColor = Color.Black,
+                                            ),
+                                            border = BorderStroke(
+                                                width = 1.dp,
+                                                color = Color.Black.copy(alpha = 0.2f)
+                                            )
+                                        )
                                     }
                                 }
                             }
@@ -381,18 +399,24 @@ fun NoteAudioScreen(
 
                         // ===== TAB MINDMAP =====
                         4 -> {
-                            Column(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(16.dp)
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    "Nhấn để xem mindmap chi tiết",
-                                    color = SubTitleColor,
-                                    modifier = Modifier.clickable { showMindmapDialog = true }
+                                ActionChip(
+                                    label = "Xem mindmap chi tiết",
+                                    leadingIcon = painterResource(R.drawable.mindmap_map_svgrepo_com),
+                                    onClick = { showMindmapDialog = true },
+                                    enabled = true,
+                                    isLoading = false,
+                                    backgroundBrush = MenuBackgroundBrush,
+                                    labelColor = Color.White
                                 )
                             }
                         }
+
                     }
                 }
             }

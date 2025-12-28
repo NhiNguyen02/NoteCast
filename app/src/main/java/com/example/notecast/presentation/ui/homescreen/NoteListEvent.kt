@@ -17,6 +17,6 @@ sealed interface NoteListEvent {
 
     // Sự kiện từ NoteItem
     data class OnDeleteNote(val noteId: String) : NoteListEvent
-    data class OnToggleFavorite(val note: NoteDomain) : NoteListEvent
-    data class OnTogglePin(val note: NoteDomain) : NoteListEvent
+    data class OnToggleFavorite(val noteId: String) : NoteListEvent
+    data class OnTogglePin(val noteId: String) : NoteListEvent
 }

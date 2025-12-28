@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -33,6 +36,14 @@ fun CreateFolderDialog(
     // 2. KHỞI TẠO STATE TỪ THAM SỐ INITIAL
     var folderName by remember { mutableStateOf(initialName) }
     var selectedColor by remember { mutableStateOf(initialColor) }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedColor) {
+        val index = folderColors.indexOf(selectedColor)
+        if (index >= 0) {
+            listState.animateScrollToItem(index)
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -96,16 +107,17 @@ fun CreateFolderDialog(
                 modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
             )
 
-            Row(
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White) // Nền mờ cho khu vực màu
+                    .background(Color.White) // Nền cho khu vực màu
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                folderColors.forEach { color ->
+                items(folderColors) { color ->
                     ColorCircle(
                         color = color,
                         isSelected = color == selectedColor,
@@ -113,6 +125,7 @@ fun CreateFolderDialog(
                     )
                 }
             }
+
 
             Spacer(modifier = Modifier.height(30.dp))
 

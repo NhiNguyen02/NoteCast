@@ -63,7 +63,10 @@ fun FolderSelectionButton(
                 trailingIconContentColor = currentFolderColor.copy(alpha = 0.5f)
             ),
             shape = RoundedCornerShape(8.dp),
-            border = null
+            border = BorderStroke(
+                width = 1.dp,
+                color = currentFolderColor
+            )
         )
 
         // 2. DROPDOWN MENU

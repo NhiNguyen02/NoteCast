@@ -113,10 +113,10 @@ fun FilterScreen(
     val lightWhite22 = Color.White.copy(alpha = 0.22f)
     val cardHeight = 72.dp
     val titleTextStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF222222))
-    val subtitleTextStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
-    val countTextStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    val subtitleTextStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, color = TextNoteColor)
+    val countTextStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     val sectionHeadingStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryAccentDark)
-    val sectionCountStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+    val sectionCountStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, color = TextNoteColor)
 
     Box(
         modifier = Modifier.fillMaxSize().background(brush = Background)
@@ -161,7 +161,13 @@ fun FilterScreen(
                 }
 
                 // FOLDERS (Đã dùng counts thật và list thật)
-                item { Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Thư mục", style = sectionHeadingStyle); Text(if (selectedFolderIndex == 0) "Tất cả" else "1 đã chọn", style = sectionCountStyle) }; Spacer(Modifier.height(8.dp)) }
+                item {
+                    Spacer(Modifier.height(4.dp));
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Thư mục", style = sectionHeadingStyle);
+                        Text(if (selectedFolderIndex == 0) "Tất cả" else "1 đã chọn", style = sectionCountStyle)
+                    }
+                }
                 itemsIndexed(displayFolders) { idx, folder ->
                     // So sánh index hiện tại với index đang được chọn
                     val selected = selectedFolderIndex == idx
@@ -192,7 +198,7 @@ fun FilterScreen(
             }
 
             // FOOTER (Logic Apply giữ nguyên)
-            Box(modifier = Modifier.fillMaxWidth().background(footerGradientBrush).padding(horizontal = horizontalPadding, vertical = 14.dp)) {
+            Box(modifier = Modifier.fillMaxWidth().background(footerGradientBrush).padding(horizontal = horizontalPadding, vertical = 16.dp)) {
                 Row(horizontalArrangement = Arrangement.SpaceBetween) {
                     val clearClick = {
                         selectedFormat = -1; selectedFolderIndex = 0; selectedStatus = -1;

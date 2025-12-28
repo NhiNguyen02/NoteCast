@@ -1,7 +1,9 @@
 package com.example.notecast.presentation.ui.homescreen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +35,7 @@ import com.example.notecast.presentation.theme.TabButton2Brush
 import com.example.notecast.presentation.ui.common_components.NoteCard
 import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
 import androidx.core.graphics.toColorInt
+import com.example.notecast.presentation.theme.Purple
 
 @Composable
 fun HomeScreenContent(
@@ -155,38 +158,50 @@ fun HomeScreenContent(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(brush = MainButtonBrush)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(brush = MainButtonBrush, alpha = 0.25f)
                         .clickable(onClick = onFilterClick)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .border(
+                            BorderStroke(1.dp, Color(0xFF5B5FC7).copy(alpha = 0.25f)),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Icon(
                             painter = painterResource(id = R.drawable.outline_filter_alt_24),
                             contentDescription = "Bộ lọc",
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp))
+                            tint = Purple,
+                            modifier = Modifier.size(18.dp) )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Bộ lọc", color = Color.White)
+                        Text("Bộ lọc", color = Purple, fontSize = 13.sp)
                     }
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(brush = MainButtonBrush)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(brush = MainButtonBrush, alpha = 0.25f)
                         .clickable(onClick = onSortClick)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .border(
+                            BorderStroke(1.dp, Color(0xFF5B5FC7).copy(alpha = 0.25f)),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Icon(
                             painter = painterResource(id = R.drawable.arrow_up_down),
                             contentDescription = "Sắp xếp",
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp))
+                            tint = Purple,
+                            modifier = Modifier.size(18.dp) )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Sắp xếp", color = Color.White)
+                        Text("Sắp xếp", color = Purple, fontSize = 13.sp)
                     }
                 }
             }
@@ -253,8 +268,15 @@ fun HomeScreenContent(
                             isSelected = isSelected,
                             onClick = { onNoteClick(note.id) },
                             onLongClick = { onNoteLongClick(note.id) },
-                            onEvent = onEvent,
+
+                            onTogglePin = { noteId ->
+                                onEvent(NoteListEvent.OnTogglePin(noteId))
+                            },
+                            onToggleFavorite = { noteId ->
+                                onEvent(NoteListEvent.OnToggleFavorite(noteId))
+                            }
                         )
+
                     }
                 }
             }

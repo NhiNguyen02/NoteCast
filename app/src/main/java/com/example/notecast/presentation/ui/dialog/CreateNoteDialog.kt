@@ -140,23 +140,23 @@ fun CreateNoteDialog(
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(end = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Tự động tóm tắt",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.95f))
-                                    )
-                                    Switch(
-                                        checked = autoSummary,
-                                        onCheckedChange = { autoSummary = it }
-                                    )
-                                }
+//                                Spacer(modifier = Modifier.height(12.dp))
+//                                Row(
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .padding(end = 4.dp),
+//                                    verticalAlignment = Alignment.CenterVertically,
+//                                    horizontalArrangement = Arrangement.SpaceBetween
+//                                ) {
+//                                    Text(
+//                                        text = "Tự động tóm tắt",
+//                                        style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.95f))
+//                                    )
+//                                    Switch(
+//                                        checked = autoSummary,
+//                                        onCheckedChange = { autoSummary = it }
+//                                    )
+//                                }
                             }
                         }
 

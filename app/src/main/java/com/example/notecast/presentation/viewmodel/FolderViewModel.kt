@@ -168,17 +168,35 @@ class FolderViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(note: NoteDomain) {
+    fun toggleFavorite(noteId: String) {
         viewModelScope.launch {
-            val updated = note.copy(isFavorite = !note.isFavorite)
-            saveNoteUseCase(updated)
+            val currentNote = cachedAllNotes
+                .firstOrNull { it.id == noteId }
+                ?: return@launch
+
+            val updatedNote = currentNote.copy(
+                isFavorite = !currentNote.isFavorite,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            saveNoteUseCase(updatedNote)
         }
     }
 
-    fun togglePin(note: NoteDomain) {
+
+    fun togglePin(noteId: String) {
         viewModelScope.launch {
-            val updated = note.copy(isPinned = !note.isPinned)
-            saveNoteUseCase(updated)
+            val currentNote = cachedAllNotes
+                .firstOrNull { it.id == noteId }
+                ?: return@launch
+
+            val updatedNote = currentNote.copy(
+                isPinned = !currentNote.isPinned,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            saveNoteUseCase(updatedNote)
         }
     }
+
 }
