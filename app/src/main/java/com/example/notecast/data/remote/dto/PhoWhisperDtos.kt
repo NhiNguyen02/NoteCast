@@ -9,20 +9,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class PhoWhisperTranscribeUrlRequest(
-    @SerialName("audio_url") val audioUrl: String
-)
-
-@Serializable
-data class PhoWhisperChunkDto(
-    val start: Double,
-    val end: Double,
-    val text: String
+    @SerialName("audio_url") val audioUrl: String,
+    @SerialName("user_id") val userId: String
 )
 
 @Serializable
 data class PhoWhisperTranscribeResponse(
-    val text: String,
-    val duration: Double,
-    @SerialName("sample_rate") val sampleRate: Int,
-    val chunks: List<PhoWhisperChunkDto> = emptyList()
+    @SerialName("note_id") val noteId: String,
+    @SerialName("status") val status: String,
+    @SerialName("duration") val duration: Double? = null,
 )

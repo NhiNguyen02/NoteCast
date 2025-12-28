@@ -6,12 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -38,21 +33,16 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.notecast.domain.model.AsrResult
+import com.example.notecast.presentation.navigation.Screen
+import com.example.notecast.presentation.viewmodel.AudioViewModel
+import com.example.notecast.presentation.viewmodel.RecorderState
 import com.example.notecast.presentation.theme.Background
 import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.Red
 import com.example.notecast.presentation.ui.dialog.ProcessingDialog
-import com.example.notecast.presentation.ui.dialog.ProcessingType
-import com.example.notecast.presentation.viewmodel.ASRState
-import com.example.notecast.presentation.viewmodel.AudioViewModel
-import com.example.notecast.presentation.viewmodel.RecorderState
-import com.example.notecast.presentation.viewmodel.ASRViewModel
-import com.example.notecast.presentation.viewmodel.FolderViewModel
+import com.example.notecast.presentation.viewmodel.RecordingViewModel
 import com.example.notecast.utils.formatElapsed
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import com.example.notecast.presentation.navigation.Screen
 
 private const val TAG_RECORDING = "RecordingScreen"
 
@@ -61,8 +51,7 @@ private const val TAG_RECORDING = "RecordingScreen"
 fun RecordingScreen(
     navController: NavController,
     audioViewModel: AudioViewModel = hiltViewModel(),
-    asrViewModel: ASRViewModel = hiltViewModel(),
-    folderViewModel: FolderViewModel = hiltViewModel(),
+    recordingViewModel: RecordingViewModel = hiltViewModel(),
     onClose: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -74,86 +63,9 @@ fun RecordingScreen(
     val vadState by audioViewModel.vadState.collectAsState()
     val amplitude by audioViewModel.amplitude.collectAsState()
 
-    val asrState: ASRState by asrViewModel.state.collectAsState()
-    // observe processing percent from ASR view model
-    val asrPercent by asrViewModel.progressPercent.collectAsState()
-
-    // Reuse global folder state that already loads all folders
-    val folderState by folderViewModel.state.collectAsState()
-    val folders = folderState.folders
-
     var showProcessing by remember { mutableStateOf(false) }
 
-    LaunchedEffect(asrState) {
-        when (val state = asrState) {
-            ASRState.Idle -> { showProcessing = false }
-            is ASRState.Processing -> { showProcessing = true }
-            is ASRState.Final -> {
-                showProcessing = false
-
-                val result: AsrResult = state.result
-                val content = result.text
-                // Backend duration (Double, giây)
-                val backendDurationMs = (result.durationSec * 1000).toLong()
-
-                val chunksJson: String? = if (result.chunks.isNotEmpty()) {
-                    try {
-                        Json.encodeToString(result.chunks).also {
-                            Log.d(TAG_RECORDING, "Encoding chunks for nav: count=${result.chunks.size}, jsonLength=${it.length}")
-                        }
-                    } catch (t: Throwable) {
-                        Log.e(TAG_RECORDING, "Failed to encode chunksJson: ${t.message}", t)
-                        null
-                    }
-                } else null
-
-                val audioPath = audioViewModel.currentRecordingFilePath
-                if (audioPath != null) {
-                    Log.d(
-                        TAG_RECORDING,
-                        "Calling saveVoiceNoteAndReturnId: path=$audioPath, durationMs=$backendDurationMs, textLength=${content.length}"
-                    )
-                    try {
-                        val newId = asrViewModel.saveVoiceNoteAndReturnId(
-                            title = "Ghi chú ghi âm",
-                            transcript = content,
-                            chunksJson = chunksJson,
-                            audioFilePath = audioPath,
-                            durationMs = backendDurationMs,
-                            folderId = null,
-                        )
-
-                        Log.d(
-                            TAG_RECORDING,
-                            "Navigate to NoteDetailText: textLength=${content.length}, hasChunks=${chunksJson != null}, noteId='$newId'"
-                        )
-
-                        navController.navigate(
-                            Screen.NoteDetailText.createRoute(newId)
-                        ) {
-                            popUpTo(Screen.Recording.route) { inclusive = true }
-                        }
-                    } catch (t: Throwable) {
-                        Log.e(TAG_RECORDING, "Error saving voice note or navigating: ${t.message}", t)
-                        Toast.makeText(
-                            context,
-                            "Không thể lưu ghi chú giọng nói",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } else {
-                    Log.w(TAG_RECORDING, "saveVoiceNoteAndReturnId skipped because audioPath is null")
-                }
-
-                asrViewModel.resetSession()
-            }
-            is ASRState.Error -> {
-                showProcessing = false
-                Toast.makeText(context, state.msg, Toast.LENGTH_SHORT).show()
-                asrViewModel.resetSession()
-            }
-        }
-    }
+    // Khi dừng ghi và xử lý xong (ở đây chỉ stop local), bạn có thể điều hướng hoặc đơn giản quay lại
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -181,23 +93,30 @@ fun RecordingScreen(
         }
     }
 
-    fun stopAndTranscribe() {
-        Log.d(TAG_RECORDING, "stopAndTranscribe: invoked, vmState=$recorderState, durationMs=$durationMillis")
+    fun stopRecordingAndFinish() {
+        Log.d(TAG_RECORDING, "stopRecordingAndFinish: invoked, state=$recorderState, durationMs=$durationMillis")
         coroutineScope.launch {
-            // suspend until stopRecordingUseCase & repository update are done
             audioViewModel.stopRecording()
             val path = audioViewModel.currentRecordingFilePath
-            Log.d(TAG_RECORDING, "stopAndTranscribe: path after stopRecording=${path}")
+            Log.d(TAG_RECORDING, "stopRecordingAndFinish: path=$path")
             if (path == null) {
-                Log.e(TAG_RECORDING, "stopAndTranscribe: currentRecordingFilePath is null, show toast")
                 Toast.makeText(context, "Không tìm thấy file ghi âm", Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            asrViewModel.transcribeRecordingFile(path)
+            showProcessing = true
+            try {
+                val noteId = recordingViewModel.transcribeRecording(path, userId = null)
+                // Điều hướng tới màn chi tiết voice note theo route của Screen.NoteAudio
+                navController.navigate(Screen.NoteAudio.createRoute(noteId))
+            } catch (t: Throwable) {
+                Log.e(TAG_RECORDING, "Error transcribing recording: ${t.message}", t)
+                Toast.makeText(context, "Lỗi gửi ghi âm: ${t.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                showProcessing = false
+            }
         }
     }
 
-    var showMenu by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
 
     Box(
@@ -224,36 +143,6 @@ fun RecordingScreen(
                         )
                     }
                 },
-//                actions = {
-//                    Box {
-//                        IconButton(
-//                            onClick = { showMenu = true },
-//                            modifier = Modifier.padding(end = 6.dp)
-//                        ) {
-//                            Icon(
-//                                Icons.Default.AddBox,
-//                                contentDescription = "Thêm",
-//                                tint = PrimaryAccent,
-//                                modifier = Modifier.size(18.dp)
-//                            )
-//                        }
-//                        DropdownMenu(
-//                            expanded = showMenu,
-//                            onDismissRequest = { showMenu = false },
-//                            offset = DpOffset(x = (-8).dp, y = 8.dp)
-//                        ) {
-//                            folders.forEach { folder: Folder ->
-//                                DropdownMenuItem(
-//                                    text = { Text(folder.name) },
-//                                    onClick = {
-//                                        // TODO: gắn logic chọn folder cho bản ghi hiện tại (nếu cần)
-//                                        showMenu = false
-//                                    }
-//                                )
-//                            }
-//                        }
-//                    }
-//                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
 
@@ -408,8 +297,8 @@ fun RecordingScreen(
                             Spacer(modifier = Modifier.width(actionGap))
                             FloatingActionButton(
                                 onClick = {
-                                    Log.d(TAG_RECORDING, "Stop & process clicked, durationMs=$durationMillis")
-                                    stopAndTranscribe()
+                                    Log.d(TAG_RECORDING, "Stop clicked, durationMs=$durationMillis")
+                                    stopRecordingAndFinish()
                                 },
                                 modifier = Modifier
                                     .size(actionOuterSize)
@@ -454,8 +343,8 @@ fun RecordingScreen(
                             Spacer(modifier = Modifier.width(actionGap))
                             FloatingActionButton(
                                 onClick = {
-                                    Log.d(TAG_RECORDING, "Stop & process clicked from Paused, durationMs=$durationMillis")
-                                    stopAndTranscribe()
+                                    Log.d(TAG_RECORDING, "Stop clicked from Paused, durationMs=$durationMillis")
+                                    stopRecordingAndFinish()
                                 },
                                 modifier = Modifier
                                     .size(actionOuterSize)
@@ -479,9 +368,9 @@ fun RecordingScreen(
 
                 Text(
                     text = if (durationMillis > 0L) {
-                        "Bấm biểu tượng thêm (góc phải) để chọn thư mục lưu (UI stub)"
+                        "Đã ghi âm xong, bấm nút dừng để lưu bản ghi."
                     } else {
-                        "Nhấn nút ghi âm để bắt đầu thu âm"
+                        "Nhấn nút ghi âm để bắt đầu thu âm."
                     },
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
@@ -494,10 +383,8 @@ fun RecordingScreen(
 
         if (showProcessing) {
             ProcessingDialog(
-                percent = asrPercent,
-                step = 1,
-                type = ProcessingType.Asr,
-                onDismissRequest = { }
+                title = "Đang gửi ghi âm và yêu cầu chuyển đổi thành giọng nói...",
+                onDismissRequest = { },
             )
         }
 

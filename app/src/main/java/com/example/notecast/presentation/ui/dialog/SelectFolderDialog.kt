@@ -1,6 +1,5 @@
 package com.example.notecast.presentation.ui.dialog
 
-import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,7 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,6 +22,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.PopUpBackgroundBrush
 import com.example.notecast.presentation.theme.PrimaryAccent
+import androidx.core.graphics.toColorInt
 
 @Composable
 fun SelectFolderDialog(
@@ -72,8 +71,9 @@ fun SelectFolderDialog(
                     items(folders) { folder ->
                         val folderColor = try {
                             if (folder.colorHex.isNullOrBlank()) PrimaryAccent
-                            else Color(AndroidColor.parseColor(folder.colorHex))
-                        } catch (e: Exception) { PrimaryAccent }
+                            else Color(folder.colorHex.toColorInt())
+                        } catch (_: Exception) {
+                            PrimaryAccent }
 
                         FolderSelectionItem(
                             name = folder.name,

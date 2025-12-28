@@ -1,5 +1,7 @@
 package com.example.notecast.presentation.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavHostController
@@ -11,6 +13,7 @@ import com.example.notecast.presentation.ui.onboarding.OnboardingScreen
 import com.example.notecast.presentation.ui.splashscreen.SplashScreen
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun RootNavGraph(navController: NavHostController, preferences: PreferencesRepository) {
     val scope = rememberCoroutineScope()

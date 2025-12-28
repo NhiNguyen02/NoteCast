@@ -1,6 +1,5 @@
 package com.example.notecast.presentation.ui.folderscreen
 
-import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.theme.PrimaryAccent
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -38,7 +38,7 @@ fun FolderCard(
     fun hexToColor(hex: String?): Color {
         return try {
             if (hex.isNullOrBlank()) PrimaryAccent
-            else Color(AndroidColor.parseColor(hex))
+            else Color(hex.toColorInt())
         } catch (_: Exception) {
             PrimaryAccent
         }

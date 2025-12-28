@@ -5,8 +5,7 @@ import androidx.room.Room
 import com.example.notecast.data.local.AppDatabase
 import com.example.notecast.data.local.dao.FolderDao
 import com.example.notecast.data.local.dao.NoteDao
-// Migration_1_2 chưa dùng vì CSDL đang ở version 1
-// import com.example.notecast.data.local.migration.MIGRATION_1_2
+import com.example.notecast.data.local.migration.MIGRATION_1_2
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,7 +25,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             "notecast.db" // Tên file database
         )
-            // .addMigrations(MIGRATION_1_2) // Chỉ thêm khi nâng version lên 2
+            .addMigrations(MIGRATION_1_2) // Chỉ thêm khi nâng version lên 2
+            .fallbackToDestructiveMigration()
             .build()
     }
 

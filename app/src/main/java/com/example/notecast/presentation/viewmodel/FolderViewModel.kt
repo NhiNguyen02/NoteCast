@@ -3,16 +3,17 @@ package com.example.notecast.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notecast.domain.model.Folder
-import com.example.notecast.domain.model.Note
+import com.example.notecast.domain.model.NoteDomain
 import com.example.notecast.domain.usecase.notefolder.DeleteFolderUseCase
 import com.example.notecast.domain.usecase.notefolder.DeleteNoteUseCase
 import com.example.notecast.domain.usecase.notefolder.GetAllFoldersUseCase
-import com.example.notecast.domain.usecase.notefolder.GetAllNotesUseCase // <-- IMPORT MỚI
+import com.example.notecast.domain.usecase.notefolder.GetAllNotesUseCase
 import com.example.notecast.domain.usecase.notefolder.GetNotesByFolderUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveFolderUseCase
 import com.example.notecast.domain.usecase.notefolder.SaveNoteUseCase
+import com.example.notecast.domain.usecase.notefolder.SyncFoldersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +29,7 @@ import javax.inject.Inject
 const val UNCATEGORIZED_FOLDER_ID = "uncategorized_virtual_id"
 data class FolderState(
     val folders: List<Folder> = emptyList(),
-    val folderNotes: List<Note> = emptyList(), // Notes của folder đang mở
+    val folderNotes: List<NoteDomain> = emptyList(), // Notes của folder đang mở
     val noteCounts: Map<String, Int> = emptyMap(),
     val isLoading: Boolean = false
 )
@@ -36,22 +37,41 @@ data class FolderState(
 @HiltViewModel
 class FolderViewModel @Inject constructor(
     private val getAllFoldersUseCase: GetAllFoldersUseCase,
-    private val getAllNotesUseCase: GetAllNotesUseCase, // <-- INJECT MỚI
+    private val getAllNotesUseCase: GetAllNotesUseCase,
     private val saveFolderUseCase: SaveFolderUseCase,
     private val deleteFolderUseCase: DeleteFolderUseCase,
     private val getNotesByFolderUseCase: GetNotesByFolderUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
+    private val syncFoldersUseCase: SyncFoldersUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FolderState())
     val state: StateFlow<FolderState> = _state.asStateFlow()
+
     // Lưu giữ danh sách tất cả note để dùng cho việc lọc local
-    private var cachedAllNotes: List<Note> = emptyList()
-    private var getNotesJob: Job? = null
+    private var cachedAllNotes: List<NoteDomain> = emptyList()
+
+    private val syncErrorHandler = CoroutineExceptionHandler { _, _ ->
+        // Ignore sync errors to avoid crashing UI; folders will be loaded from Room cache
+    }
 
     init {
+        // Đồng bộ folders từ NoteServices về Room khi ViewModel được tạo
+        viewModelScope.launch(syncErrorHandler) {
+            runCatching { syncFoldersUseCase() }
+                .onFailure { /* optional: log error, but don't update UI state as error-critical */ }
+        }
+
         loadData()
+    }
+
+    // Optional: cho phép UI chủ động gọi sync lại nếu cần
+    fun syncFolders() {
+        viewModelScope.launch(syncErrorHandler) {
+            runCatching { syncFoldersUseCase() }
+                .onFailure { /* swallow to keep UI stable */ }
+        }
     }
 
     private fun loadData() {
@@ -113,19 +133,6 @@ class FolderViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(note: Note) {
-        viewModelScope.launch {
-            saveNoteUseCase(note.copy(isFavorite = !note.isFavorite))
-        }
-    }
-
-    fun togglePin(note: Note) {
-        viewModelScope.launch {
-            val newPinTimestamp = if (note.pinTimestamp != null) null else System.currentTimeMillis()
-            saveNoteUseCase(note.copy(pinTimestamp = newPinTimestamp))
-        }
-    }
-
     fun createFolder(folder: Folder) {
         viewModelScope.launch { saveFolderUseCase(folder) }
     }
@@ -134,6 +141,7 @@ class FolderViewModel @Inject constructor(
         if (id == UNCATEGORIZED_FOLDER_ID) return
         viewModelScope.launch { deleteFolderUseCase(id) }
     }
+
     fun deleteMultipleNotes(noteIds: List<String>) {
         viewModelScope.launch {
             noteIds.forEach { id -> deleteNoteUseCase(id) }
@@ -157,6 +165,20 @@ class FolderViewModel @Inject constructor(
                 )
                 saveNoteUseCase(updatedNote)
             }
+        }
+    }
+
+    fun toggleFavorite(note: NoteDomain) {
+        viewModelScope.launch {
+            val updated = note.copy(isFavorite = !note.isFavorite)
+            saveNoteUseCase(updated)
+        }
+    }
+
+    fun togglePin(note: NoteDomain) {
+        viewModelScope.launch {
+            val updated = note.copy(isPinned = !note.isPinned)
+            saveNoteUseCase(updated)
         }
     }
 }

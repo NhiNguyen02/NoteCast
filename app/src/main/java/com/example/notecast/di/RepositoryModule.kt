@@ -1,20 +1,18 @@
 package com.example.notecast.di
 
-import com.example.notecast.data.repository.AsrRepositoryImpl
+import com.example.notecast.data.local.dao.FolderDao
+import com.example.notecast.data.local.dao.NoteDao
+import com.example.notecast.data.remote.FolderRemoteDataSource
 import com.example.notecast.data.repository.AudioRepositoryImpl
 import com.example.notecast.data.repository.FolderRepositoryImpl
 import com.example.notecast.data.repository.NoteRepositoryImpl
 import com.example.notecast.data.repository.PreferencesRepositoryImpl
-import com.example.notecast.data.repository.SummaryRepository
-import com.example.notecast.data.repository.VADRepositoryImpl
-import com.example.notecast.domain.repository.AsrRepository
-import com.example.notecast.domain.repository.NoteRepository
-import com.example.notecast.domain.repository.PreferencesRepository
+import com.example.notecast.data.repository.RemoteNoteServiceRepositoryImpl
 import com.example.notecast.domain.repository.AudioRepository
 import com.example.notecast.domain.repository.FolderRepository
-import com.example.notecast.domain.repository.VADRepository
-import com.example.notecast.domain.usecase.postprocess.SummarizeNoteUseCase
-import dagger.Binds
+import com.example.notecast.domain.repository.NoteRemoteRepository
+import com.example.notecast.domain.repository.NoteRepository
+import com.example.notecast.domain.repository.PreferencesRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,56 +21,38 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
+object RepositoryModule {
 
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindNoteRepository(
-        impl: NoteRepositoryImpl
-    ): NoteRepository // Ràng buộc Interface và Implementation
+    fun provideNoteRepository(
+        noteDao: NoteDao,
+        noteRemoteRepository: NoteRemoteRepository,
+    ): NoteRepository = NoteRepositoryImpl(noteDao, noteRemoteRepository)
 
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindFolderRepository(
-        impl: FolderRepositoryImpl
-    ): FolderRepository // Ràng buộc Interface và Implementation
+    fun provideFolderRepository(
+        folderDao: FolderDao,
+        remote: FolderRemoteDataSource,
+    ): FolderRepository = FolderRepositoryImpl(folderDao, remote)
 
-    @Binds
+
+    @Provides
     @Singleton
-    abstract fun bindPreferencesRepository(
+    fun providePreferencesRepository(
         impl: PreferencesRepositoryImpl
-    ): PreferencesRepository // Ràng buộc Interface và Implementation
+    ): PreferencesRepository = impl
 
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindAudioRepository(
-        impl: AudioRepositoryImpl // Trỏ đến file Impl mới sửa
-    ): AudioRepository
+    fun provideAudioRepository(
+        impl: AudioRepositoryImpl
+    ): AudioRepository = impl
 
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindAsrRepository(
-        impl: AsrRepositoryImpl
-    ): AsrRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindVADRepository(
-        impl: VADRepositoryImpl
-    ): VADRepository
-
-    companion object {
-
-        @Provides
-        @Singleton
-        fun provideSummaryRepository(
-            apiService: com.example.notecast.data.remote.GeminiApiService
-        ): SummaryRepository = SummaryRepository(apiService)
-
-        @Provides
-        @Singleton
-        fun provideSummarizeNoteUseCase(
-            summaryRepository: SummaryRepository
-        ): SummarizeNoteUseCase = SummarizeNoteUseCase(summaryRepository)
-    }
+    fun provideRemoteNoteServiceRepository(
+        impl: RemoteNoteServiceRepositoryImpl
+    ): NoteRemoteRepository = impl
 }

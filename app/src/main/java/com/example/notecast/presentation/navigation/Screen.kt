@@ -17,29 +17,29 @@ sealed class Screen(val route: String) {
     object Notifications : Screen("notifications")
     object Settings : Screen("settings")
     object Recording : Screen("recording")
-    object NoteEdit : Screen("note_edit/{noteId}"){
-        fun createRoute(noteId: String) = "note_edit/$noteId"
+    object NoteText : Screen("note_text/{noteId}"){
+        fun createRoute(noteId: String) = "note_text/$noteId"
 
         const val arg = "noteId"
-        val routeWithArgs = "note_edit/{$arg}"
+        val routeWithArgs = "note_text/{$arg}"
         val arguments = listOf(
             navArgument(arg) {
                 type = NavType.StringType
-                defaultValue = "0" // Mặc định là 0 (Tạo mới)
+                defaultValue = "0"
             }
         )
     }
 
     // New screen for viewing voice notes with text + audio tabs, loading data from DB by noteId
-    object NoteDetailText : Screen("note_detail_text/{noteId}") {
+    object NoteAudio : Screen("note_audio/{noteId}") {
         private const val arg = "noteId"
-        val routeWithArgs = "note_detail_text/{$arg}"
+        val routeWithArgs = "note_audio/{$arg}"
         val arguments = listOf(
             navArgument(arg) {
                 type = NavType.StringType
             }
         )
 
-        fun createRoute(noteId: String): String = "note_detail_text/$noteId"
+        fun createRoute(noteId: String): String = "note_audio/$noteId"
     }
 }

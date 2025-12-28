@@ -32,9 +32,15 @@ android {
         // 3. Lấy Key và tạo BuildConfigField
         val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
         val cloudinaryUrl = localProperties.getProperty("CLOUDINARY_URL") ?: ""
+        val geminiBaseUrl = localProperties.getProperty("GEMINI_API_BASE_URL") ?: ""
+        val phoWhisperBaseUrl = localProperties.getProperty("PHO_WHISPER_API_BASE_URL") ?: ""
+        val noteServiceUrl = localProperties.getProperty("NOTE_SERVICE_URL") ?: ""
 
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "CLOUDINARY_URL", "\"$cloudinaryUrl\"")
+        buildConfigField("String", "NOTE_SERVICE_URL", "\"$noteServiceUrl\"")
+        buildConfigField("String", "GEMINI_API_BASE_URL", "\"$geminiBaseUrl\"")
+        buildConfigField("String", "PHO_WHISPER_API_BASE_URL", "\"$phoWhisperBaseUrl\"")
     }
 
     buildTypes {
@@ -113,6 +119,8 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0") // Để xem log API
+    // SSE for Retrofit
+    implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     // Converter để Retrofit hiểu JSON của Kotlin Serialization
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")

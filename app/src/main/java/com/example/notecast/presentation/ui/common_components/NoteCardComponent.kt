@@ -3,13 +3,13 @@ package com.example.notecast.presentation.ui.common_components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,32 +21,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.notecast.R
-import com.example.notecast.domain.model.Note
+import com.example.notecast.domain.model.NoteDomain
+import com.example.notecast.domain.model.NoteType
 import com.example.notecast.presentation.theme.PrimaryAccent
+import com.example.notecast.presentation.ui.homescreen.NoteListEvent
 
 @Composable
 fun NoteCard(
-    note: Note,
+    note: NoteDomain,
     folderName: String,
     folderColor: Color,
-
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    onPinClick: () -> Unit,
-
-    isSelectionMode: Boolean = false,
-    isSelected: Boolean = false,
-    onLongClick: () -> Unit = {},
+    onLongClick: () -> Unit,
+    onEvent: (NoteListEvent) -> Unit,
 ) {
-    val iconRes = if (note.noteType == "VOICE") R.drawable.outline_mic_24 else R.drawable.file_text
+    val iconRes = if (note.type == NoteType.AUDIO) R.drawable.outline_mic_24 else R.drawable.file_text
     val cardBorder = if (isSelected) BorderStroke(2.dp, PrimaryAccent) else null
+
     Card(
         shape = RoundedCornerShape(15.dp),
         modifier = Modifier
@@ -56,6 +55,7 @@ fun NoteCard(
                 onLongClick = onLongClick
             ),
         colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = cardBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(
@@ -64,7 +64,6 @@ fun NoteCard(
         ) {
             // HEADER: Icon & Title
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icon and category tag
                 Icon(
                     painter = painterResource(iconRes),
                     contentDescription = null,
@@ -75,7 +74,7 @@ fun NoteCard(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
-                    text = note.title.ifBlank { "Chưa có tiêu đề" },
+                    text = note.title?.ifBlank { "Chưa có tiêu đề" } ?: "Chưa có tiêu đề",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
@@ -87,14 +86,13 @@ fun NoteCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // CONTENT
+            // CONTENT SNIPPET
+            val contentPreview = note.normalizedText ?: note.rawText ?: "Không có nội dung"
             Text(
-                text = note.content ?: (note.rawText ?: "Không có nội dung"),
+                text = contentPreview,
                 maxLines = 1,
-                minLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .fillMaxWidth(0.7f),
+                modifier = Modifier.fillMaxWidth(0.7f),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
@@ -107,18 +105,18 @@ fun NoteCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // Folder chip
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White) // Nền trắng
+                        .background(Color.White)
                         .border(
-                            border = BorderStroke(1.dp, folderColor.copy(alpha = 0.6f)), // Viền màu
+                            border = BorderStroke(1.dp, folderColor.copy(alpha = 0.6f)),
                             shape = RoundedCornerShape(12.dp)
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Icon Folder nhỏ
                         Icon(
                             imageVector = Icons.Outlined.Folder,
                             contentDescription = null,
@@ -126,35 +124,36 @@ fun NoteCard(
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        // Tên Folder
                         Text(
                             text = folderName,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = folderColor // Chữ cùng màu với viền/icon
+                            color = folderColor
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
+
                 if (!isSelectionMode) {
-                    // Actions
                     Row {
+                        // Pin icon
                         IconButton(
-                            onClick = onPinClick,
+                            onClick = { onEvent(NoteListEvent.OnTogglePin(note)) },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.pin),
+                                imageVector = Icons.Filled.PushPin,
                                 contentDescription = "Pin",
-                                tint = if (note.pinTimestamp != null) Color(0xFF6200EE) else Color.LightGray,
+                                tint = if (note.isPinned) Color(0xFF6200EE) else Color.LightGray,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
 
                         Spacer(modifier = Modifier.width(4.dp))
 
+                        // Favorite icon
                         IconButton(
-                            onClick = onFavoriteClick,
+                            onClick = { onEvent(NoteListEvent.OnToggleFavorite(note)) },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
@@ -166,7 +165,7 @@ fun NoteCard(
                         }
                     }
                 }
-                // OVERLAY CHECKBOX KHI ĐƯỢC CHỌN
+
                 if (isSelectionMode && isSelected) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
@@ -175,7 +174,7 @@ fun NoteCard(
                         modifier = Modifier
                             .padding(8.dp)
                             .size(24.dp)
-                            .background(Color.White, CircleShape) // Nền trắng cho icon check
+                            .background(Color.White, CircleShape)
                     )
                 }
             }

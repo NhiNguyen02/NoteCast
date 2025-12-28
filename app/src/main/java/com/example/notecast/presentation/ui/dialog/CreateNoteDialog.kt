@@ -32,9 +32,7 @@ fun CreateNoteDialog(
     onCreate: (type: String, autoSummary: Boolean) -> Unit,
     startAutoSummary: Boolean = true
 ) {
-    val gradientTop = Color(0xFFB96CFF)
     val gradientMiddle = Color(0xFF8A4BFF)
-    val gradientBottom = Color(0xFF6A2CFF)
     var autoSummary by remember { mutableStateOf(startAutoSummary) }
 
     Dialog(onDismissRequest = onDismiss) {

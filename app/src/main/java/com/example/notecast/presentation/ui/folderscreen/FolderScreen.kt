@@ -21,18 +21,18 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.notecast.domain.model.Folder
 import com.example.notecast.presentation.ui.dialog.CreateFolderDialog
 import com.example.notecast.presentation.ui.dialog.SelectFolderDialog // <-- IMPORT DIALOG CHỌN
 import com.example.notecast.presentation.theme.Purple
 import com.example.notecast.presentation.theme.TitleBrush
+import com.example.notecast.presentation.theme.folderColors
 import com.example.notecast.presentation.viewmodel.FolderViewModel
 import com.example.notecast.presentation.ui.common_components.NoteCard
-// Import NoteSelectionBar (nếu bạn để ở homescreen package)
 import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
-import androidx.core.graphics.toColorInt
-import com.example.notecast.presentation.theme.folderColors
+import com.example.notecast.presentation.ui.homescreen.NoteListEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -209,8 +209,13 @@ fun FolderScreen(
                                         onNoteClick(note.id) // Mở chi tiết note
                                     }
                                 },
-                                onFavoriteClick = { viewModel.toggleFavorite(note) },
-                                onPinClick = { viewModel.togglePin(note) }
+                                onEvent = { event ->
+                                    when (event) {
+                                        is NoteListEvent.OnToggleFavorite -> viewModel.toggleFavorite(event.note)
+                                        is NoteListEvent.OnTogglePin      -> viewModel.togglePin(event.note)
+                                        else                             -> Unit
+                                    }
+                                },
                             )
                         }
                     }

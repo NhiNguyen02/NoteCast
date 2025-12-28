@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import android.graphics.Color as AndroidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,6 +32,7 @@ import com.example.notecast.presentation.theme.PrimaryAccent
 import com.example.notecast.presentation.theme.TabButton2Brush
 import com.example.notecast.presentation.ui.common_components.NoteCard
 import com.example.notecast.presentation.ui.common_components.NoteSelectionBar
+import androidx.core.graphics.toColorInt
 
 @Composable
 fun HomeScreenContent(
@@ -49,7 +49,7 @@ fun HomeScreenContent(
     onSelectAllClick: () -> Unit,
     onDeleteSelected: () -> Unit,
     onMoveSelected: () -> Unit,
-    onCloseSelectionMode: () -> Unit
+    onCloseSelectionMode: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val search = ""
@@ -93,7 +93,6 @@ fun HomeScreenContent(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-//            Spacer(Modifier.height(16.dp))
             // --- HEADER ---
             HomeTopAppBar(
                 isSelectionMode = isSelectionMode,
@@ -105,8 +104,6 @@ fun HomeScreenContent(
                 },
                 onSelectAllClick = onSelectAllClick,
             )
-
-//            Spacer(modifier = Modifier.height(20.dp))
 
             // --- SEARCH BAR ---
             Row(
@@ -242,9 +239,9 @@ fun HomeScreenContent(
                         val folder = state.allFolders.find { it.id == note.folderId }
                         val folderName = folder?.name ?: "Chưa phân loại"
                         val folderColor = try {
-                            if (folder?.colorHex != null) Color(AndroidColor.parseColor(folder.colorHex))
+                            if (folder?.colorHex != null) Color(folder.colorHex.toColorInt())
                             else Color(0xFFCCA8FF)
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             PrimaryAccent
                         }
                         val isSelected = selectedNoteIds.contains(note.id)
@@ -256,8 +253,7 @@ fun HomeScreenContent(
                             isSelected = isSelected,
                             onClick = { onNoteClick(note.id) },
                             onLongClick = { onNoteLongClick(note.id) },
-                            onFavoriteClick = { onEvent(NoteListEvent.OnToggleFavorite(note)) },
-                            onPinClick = { onEvent(NoteListEvent.OnTogglePin(note)) }
+                            onEvent = onEvent,
                         )
                     }
                 }

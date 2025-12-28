@@ -7,9 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.example.notecast.data.local.entities.AudioEntity
 import com.example.notecast.data.local.entities.NoteEntity
-import com.example.notecast.data.local.entities.NoteWithDetails
-import com.example.notecast.data.local.entities.ProcessedTextEntity
-import com.example.notecast.data.local.entities.TranscriptEntity
+import com.example.notecast.data.local.entities.NoteWithAudio
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -24,12 +22,6 @@ interface NoteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAudio(audio: AudioEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertTranscript(transcript: TranscriptEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertProcessedText(processedText: ProcessedTextEntity)
-
     // --- CÁC HÀM TRANSACTION (ĐẢM BẢO TOÀN VẸN DỮ LIỆU) ---
 
     /**
@@ -40,11 +32,9 @@ interface NoteDao {
     suspend fun createVoiceNote(
         note: NoteEntity,
         audio: AudioEntity,
-        transcript: TranscriptEntity
     ) {
         upsertNote(note)
         upsertAudio(audio)
-        upsertTranscript(transcript)
     }
 
     // --- CÁC HÀM GET (ĐỌC DỮ LIỆU) ---
@@ -56,29 +46,29 @@ interface NoteDao {
      */
     @Transaction
     @Query("SELECT * FROM note WHERE id = :noteId AND isDeleted = 0")
-    fun getNoteWithDetails(noteId: String): Flow<NoteWithDetails?>
+    fun getNoteWithAudio(noteId: String): Flow<NoteWithAudio?>
 
     /**
      * Lấy tất cả ghi chú (cho màn hình chính).
      * Sắp xếp: Ghim lên đầu, sau đó theo cập nhật mới nhất.
      */
     @Transaction
-    @Query("SELECT * FROM note WHERE isDeleted = 0 ORDER BY pinTimestamp DESC, updatedAt DESC")
-    fun getAllNotes(): Flow<List<NoteWithDetails>>
+    @Query("SELECT * FROM note WHERE isDeleted = 0 ORDER BY updatedAt DESC")
+    fun getAllNotesWithAudio(): Flow<List<NoteWithAudio>>
 
     /**
      * Lấy các ghi chú theo thư mục.
      */
     @Transaction
-    @Query("SELECT * FROM note WHERE folderId = :folderId AND isDeleted = 0 ORDER BY pinTimestamp DESC, updatedAt DESC")
-    fun getNotesByFolder(folderId: String): Flow<List<NoteWithDetails>>
+    @Query("SELECT * FROM note WHERE folderId = :folderId AND isDeleted = 0 ORDER BY updatedAt DESC")
+    fun getNotesWithAudioByFolder(folderId: String): Flow<List<NoteWithAudio>>
 
     /**
      * Lấy các ghi chú "Chưa phân loại" (folderId = null).
      */
     @Transaction
-    @Query("SELECT * FROM note WHERE folderId IS NULL AND isDeleted = 0 ORDER BY pinTimestamp DESC, updatedAt DESC")
-    fun getUncategorizedNotes(): Flow<List<NoteWithDetails>>
+    @Query("SELECT * FROM note WHERE folderId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC")
+    fun getUncategorizedNotesWithAudio(): Flow<List<NoteWithAudio>>
 
     // --- CÁC HÀM XÓA VÀ ĐỒNG BỘ ---
 
@@ -93,12 +83,8 @@ interface NoteDao {
     @Query("SELECT * FROM note WHERE isSynced = 0")
     suspend fun getUnsyncedNotes(): List<NoteEntity>
 
-    @Query("SELECT * FROM audio WHERE isSynced = 0")
-    suspend fun getUnsyncedAudios(): List<AudioEntity>
 
-    @Query("SELECT * FROM transcript WHERE isSynced = 0")
-    suspend fun getUnsyncedTranscripts(): List<TranscriptEntity>
+    @Query("UPDATE note SET isSynced = 1 WHERE id = :noteId")
+    suspend fun markNoteSynced(noteId: String)
 
-    @Query("SELECT * FROM processed_text WHERE isSynced = 0")
-    suspend fun getUnsyncedProcessedTexts(): List<ProcessedTextEntity>
 }

@@ -1,8 +1,11 @@
 package com.example.notecast.data.repository
 
+import android.util.Log
 import com.example.notecast.data.local.dao.NoteDao
-import com.example.notecast.data.local.mapper.EntityMapper
-import com.example.notecast.domain.model.Note
+import com.example.notecast.data.local.entities.AudioEntity
+import com.example.notecast.data.local.mapper.MappingEntityToDomain
+import com.example.notecast.domain.model.NoteDomain
+import com.example.notecast.domain.repository.NoteRemoteRepository
 import com.example.notecast.domain.repository.NoteRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -15,77 +18,70 @@ import javax.inject.Singleton
  */
 @Singleton
 class NoteRepositoryImpl @Inject constructor(
-    private val noteDao: NoteDao // <-- CHỈ INJECT 1 DAO
+    private val noteDao: NoteDao, // <-- CHỈ INJECT 1 DAO
+    private val noteRemoteRepository: NoteRemoteRepository,
 ) : NoteRepository {
 
     /**
-     * LẤY (READ): Sử dụng mapper [noteWithDetailsToDomain]
+     * LẤY (READ): sử dụng mapper MappingEntityToDomain.noteWithAudioToDomain
      */
-    override fun getAllNotes(): Flow<List<Note>> {
-        // 1. Gọi DAO, lấy về Flow<List<NoteWithDetails>> (POJO)
-        return noteDao.getAllNotes().map { listNwd ->
-            // 2. Map POJO -> Domain Model
-            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+    override fun getAllNotes(): Flow<List<NoteDomain>> {
+        return noteDao.getAllNotesWithAudio().map { list ->
+            list.map { MappingEntityToDomain.noteWithAudioToDomain(it) }
         }
     }
 
-    override fun getNotesByFolder(folderId: String): Flow<List<Note>> {
-        return noteDao.getNotesByFolder(folderId).map { listNwd ->
-            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+    override fun getNotesByFolder(folderId: String): Flow<List<NoteDomain>> {
+        return noteDao.getNotesWithAudioByFolder(folderId).map { list ->
+            list.map { MappingEntityToDomain.noteWithAudioToDomain(it) }
         }
     }
 
-    override fun getUncategorizedNotes(): Flow<List<Note>> {
-        return noteDao.getUncategorizedNotes().map { listNwd ->
-            listNwd.map { nwd -> EntityMapper.noteWithDetailsToDomain(nwd) }
+    override fun getUncategorizedNotes(): Flow<List<NoteDomain>> {
+        return noteDao.getUncategorizedNotesWithAudio().map { list ->
+            list.map { MappingEntityToDomain.noteWithAudioToDomain(it) }
         }
     }
 
-    override fun getNoteById(id: String): Flow<Note?> {
-        // 1. Gọi DAO, lấy về Flow<NoteWithDetails?> (POJO)
-        return noteDao.getNoteWithDetails(id).map { nwd ->
-            // 2. Map POJO -> Domain Model (nếu không null)
-            nwd?.let { EntityMapper.noteWithDetailsToDomain(it) }
+    override fun getNoteById(id: String): Flow<NoteDomain?> {
+        return noteDao.getNoteWithAudio(id).map { nwa ->
+            nwa?.let { MappingEntityToDomain.noteWithAudioToDomain(it) }
         }
     }
 
-    /**
-     * GHI (WRITE): Sử dụng các mapper "tách" (domainTo...Entity)
-     */
-    override suspend fun saveNote(note: Note) {
-        // "Tách" (split) 1 Domain Model [Note] thành 4 Entities
-        val noteEntity = EntityMapper.domainToNoteEntity(note).copy(isSynced = false)
-        val audioEntity = EntityMapper.domainToAudioEntity(note)?.copy(isSynced = false)
-        val transcriptEntity = EntityMapper.domainToTranscriptEntity(note)?.copy(isSynced = false)
-        val processedEntity = EntityMapper.domainToProcessedTextEntity(note)?.copy(isSynced = false)
-
-        // Ghi xuống CSDL
+    override suspend fun saveNote(note: NoteDomain) {
+        val noteEntity = MappingEntityToDomain.domainToNoteEntity(note)
+        val audioEntity: AudioEntity? = MappingEntityToDomain.domainToAudioEntity(note)
         noteDao.upsertNote(noteEntity)
-
-        if (audioEntity != null) {
-            noteDao.upsertAudio(audioEntity)
-        }
-        if (transcriptEntity != null) {
-            noteDao.upsertTranscript(transcriptEntity)
-        }
-        if (processedEntity != null) {
-            noteDao.upsertProcessedText(processedEntity)
-        }
+        audioEntity?.let { noteDao.upsertAudio(it) }
     }
 
     override suspend fun deleteNote(id: String) {
-        // Dùng "xóa mềm"
         noteDao.softDeleteNote(id, System.currentTimeMillis())
     }
 
-    override suspend fun searchNotes(query: String): List<Note> {
-        // TODO: Cần implement logic tìm kiếm
-        println("WARN: Search functionality is not yet implemented in DAO.")
+    override suspend fun searchNotes(query: String): List<NoteDomain> {
         return emptyList()
     }
 
     override suspend fun syncPending() {
-        // TODO: Implement sync logic
-        println("Sync logic is skipped.")
+        // Backend NoteServices là source of truth.
+        // Thay vì đẩy local notes lên server, ta kéo remote notes
+        // và merge vào Room.
+        val remoteNotes: List<NoteDomain> = noteRemoteRepository.fetchAllNotes()
+        Log.d("SyncNotes", "Fetched ${remoteNotes.size} notes from remote")
+        for (remote in remoteNotes) {
+            Log.d(
+                "SyncNotes",
+                "Saving remote note id=${remote.id}, title=${remote.title}, type=${remote.type}, folderId=${remote.folderId}"
+            )
+            saveNote(remote)
+            noteDao.markNoteSynced(remote.id)
+        }
+        // Chính sách xử lý note local không còn trên server (xóa/giữ) có thể bổ sung sau.
+    }
+
+    override suspend fun markSynced(noteId: String) {
+        noteDao.markNoteSynced(noteId)
     }
 }

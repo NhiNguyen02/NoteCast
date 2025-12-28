@@ -1,6 +1,5 @@
 package com.example.notecast.data.local.entities
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -18,15 +17,13 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["noteId"], unique = true)]
 )
 data class AudioEntity(
-    @PrimaryKey val id: String, // (Giữ PK riêng nếu bạn muốn)
-    val noteId: String, // Khóa ngoại liên kết với Note
+    @PrimaryKey val noteId: String, // Khóa ngoại liên kết với Note
 
-    val filePath: String, //
-    val cloudUrl: String? = null, //
-    val durationMs: Long, //
+    val durationSec: Double, //
     val sampleRate: Int, //
-    val channels: Int, //
+    val chunksJson: String? = null, //
+    val localFilePath: String? = null, //
+    val cloudUrl: String? = null, //
     val createdAt: Long, //
-    @ColumnInfo(defaultValue = "0") val isSynced: Boolean = false, //
-    @ColumnInfo(defaultValue = "0") val isDeleted: Boolean = false //
+    val asrModel: String? = null,
 )

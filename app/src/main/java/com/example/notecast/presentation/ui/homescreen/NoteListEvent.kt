@@ -1,6 +1,6 @@
 package com.example.notecast.presentation.ui.homescreen
 
-import com.example.notecast.domain.model.Note
+import com.example.notecast.domain.model.NoteDomain
 
 /**
  * Event MỚI: Thêm các sự kiện Lọc & Sắp xếp
@@ -17,6 +17,6 @@ sealed interface NoteListEvent {
 
     // Sự kiện từ NoteItem
     data class OnDeleteNote(val noteId: String) : NoteListEvent
-    data class OnToggleFavorite(val note: Note) : NoteListEvent
-    data class OnTogglePin(val note: Note) : NoteListEvent
+    data class OnToggleFavorite(val note: NoteDomain) : NoteListEvent
+    data class OnTogglePin(val note: NoteDomain) : NoteListEvent
 }

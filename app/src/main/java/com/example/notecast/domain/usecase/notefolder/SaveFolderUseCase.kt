@@ -14,7 +14,7 @@ class SaveFolderUseCase @Inject constructor(
     suspend operator fun invoke(folder: Folder) {
         // Business logic: Gán ID nếu tạo mới và cập nhật timestamp
         val folderToSave = folder.copy(
-            id = if (folder.id.isBlank()) UUID.randomUUID().toString() else folder.id,
+            id = folder.id.ifBlank { UUID.randomUUID().toString() },
             updatedAt = System.currentTimeMillis()
         )
         repository.saveFolder(folderToSave)

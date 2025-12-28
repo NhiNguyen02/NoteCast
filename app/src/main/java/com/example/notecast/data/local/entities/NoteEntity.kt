@@ -19,21 +19,23 @@ import androidx.room.PrimaryKey
 data class NoteEntity(
     @PrimaryKey val id: String,
 
-    val noteType: String, // "TEXT" hoặc "VOICE"
-    val title: String,
-    val content: String? = null,
-    val tags: String,
-    val mindMapJson: String? = null,
+    val type: String,
+    val title: String? = null,
+    val rawText: String? = null,
+    val normalizedText: String? = null,
+    val summary: String? = null,
+    val keywordsJson: String? = null, // JSON List<String>
+    val mindmapJson: String? = null,  // JSON MindMapNode tree
+    val status: String,
 
-    val isFavorite: Boolean = false,
-
-    @ColumnInfo(defaultValue = "NULL")
-    val pinTimestamp: Long? = null,
+    // MỚI: lưu danh sách tác vụ generate backend đã chạy
+    val generateJson: String? = null,     // JSON của List<String>
 
     val folderId: String? = null,
-    val colorHex: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
     @ColumnInfo(defaultValue = "0") val isSynced: Boolean = false,
-    @ColumnInfo(defaultValue = "0") val isDeleted: Boolean = false
+    @ColumnInfo(defaultValue = "0") val isDeleted: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val isFavorite: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val isPinned: Boolean = false,
 )

@@ -1,6 +1,5 @@
 package com.example.notecast.presentation.ui.folderscreen
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons

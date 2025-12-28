@@ -17,16 +17,17 @@ import com.example.notecast.presentation.ui.filter.FilterScreen
 import com.example.notecast.presentation.ui.sort.SortScreen
 import com.example.notecast.presentation.ui.dialog.SelectFolderDialog
 import com.example.notecast.presentation.viewmodel.NoteListViewModel
-import com.example.notecast.domain.model.Note
+import com.example.notecast.domain.model.NoteDomain
 
 /**
- * HomeScreen: nhẹ, không quản lý dialog. Khi user nhấn FAB, HomeScreen gọi onOpenCreateDialog()
+ * HomeScreen: nhẹ, không quản lý điều hướng. Khi user nhấn FAB, HomeScreen gọi onOpenCreateDialog()
+ * onNoteClick trả về NoteDomain để MainAppScreen quyết định route (NoteText vs NoteAudio).
  */
 @Composable
 fun HomeScreen(
     drawerState: DrawerState,
     onOpenCreateDialog: () -> Unit,
-    onNoteClick: (Note) -> Unit,
+    onNoteClick: (NoteDomain) -> Unit,
     viewModel: NoteListViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -38,9 +39,7 @@ fun HomeScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     val selectedNoteIds = remember { mutableStateListOf<String>() }
 
-    // Loading khi bấm tạo note ghi âm nhưng chưa điều hướng xong
-    // Logic điều hướng sang màn Recording đã được xử lý ở MainAppScreen thông qua onOpenCreateDialog.
-    // Vì vậy, HomeScreen không còn tự navigate nữa mà chỉ gọi callback.
+    // Loading khi bấm tạo note ghi âm nhưng chưa điều hướng xong (giữ để dùng sau nếu cần)
     var isNavigatingToRecord by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -59,14 +58,12 @@ fun HomeScreen(
             // Xử lý click vào note
             onNoteClick = { noteId ->
                 if (isSelectionMode) {
-                    // Nếu đang chọn -> Toggle
                     if (selectedNoteIds.contains(noteId)) selectedNoteIds.remove(noteId)
                     else selectedNoteIds.add(noteId)
 
-                    // Nếu bỏ chọn hết -> Tắt chế độ chọn
                     if (selectedNoteIds.isEmpty()) isSelectionMode = false
                 } else {
-                    // Nếu bình thường -> Mở chi tiết
+                    // Bình thường -> Mở chi tiết: tìm NoteDomain trong state và trả lên callback
                     val note = state.filteredAndSortedNotes.firstOrNull { it.id == noteId }
                     if (note != null) {
                         onNoteClick(note)
@@ -74,43 +71,35 @@ fun HomeScreen(
                 }
             },
 
-            // Xử lý nhấn giữ (Long click) -> Bật chế độ chọn
             onNoteLongClick = { noteId ->
                 if (!isSelectionMode) {
                     isSelectionMode = true
                     selectedNoteIds.add(noteId)
                 }
             },
-            // Xử lý chọn tất cả
             onSelectAllClick = {
                 if (selectedNoteIds.size == state.filteredAndSortedNotes.size) {
-                    selectedNoteIds.clear() // Bỏ chọn tất cả
+                    selectedNoteIds.clear()
                 } else {
                     selectedNoteIds.clear()
-                    selectedNoteIds.addAll(state.filteredAndSortedNotes.map { it.id }) // Chọn tất cả
+                    selectedNoteIds.addAll(state.filteredAndSortedNotes.map { it.id })
                 }
             },
-
-            // Xử lý xóa nhiều
             onDeleteSelected = {
                 viewModel.deleteMultipleNotes(selectedNoteIds.toList())
                 isSelectionMode = false
                 selectedNoteIds.clear()
             },
-
-            // Xử lý di chuyển nhiều
             onMoveSelected = {
                 showMoveDialog = true
             },
-            // Xử lý tắt chế độ chọn (nút Back hoặc X)
             onCloseSelectionMode = {
                 isSelectionMode = false
                 selectedNoteIds.clear()
             },
         )
 
-        // Overlay loading khi chuẩn bị chuyển sang màn ghi âm
-        // Giữ lại state này nếu sau này cần hiển thị trong Home khi MainAppScreen đang xử lý điều hướng.
+        // Optional overlay loading khi chuẩn bị chuyển sang màn ghi âm
         if (isNavigatingToRecord) {
             Dialog(onDismissRequest = { }) {
                 Box(
@@ -125,19 +114,17 @@ fun HomeScreen(
             }
         }
 
-
         if (showFilterDialog) {
             FilterScreen(
                 currentOptions = state.filterOptions,
                 availableFolders = state.allFolders,
-                counts = state.filterCounts, // <-- TRUYỀN COUNTS VÀO
+                counts = state.filterCounts,
                 onApply = { newOptions ->
                     viewModel.onEvent(NoteListEvent.OnApplyFilters(newOptions))
                 },
                 onClose = { showFilterDialog = false }
             )
         }
-
 
         if (showSortDialog) {
             SortScreen(
@@ -148,12 +135,12 @@ fun HomeScreen(
                 onClose = { showSortDialog = false }
             )
         }
+
         if (showMoveDialog) {
             SelectFolderDialog(
                 folders = state.allFolders,
                 onDismiss = { showMoveDialog = false },
                 onFolderSelected = { targetFolder ->
-                    // Gọi ViewModel di chuyển
                     viewModel.moveNotesToFolder(selectedNoteIds.toList(), targetFolder?.id)
                     showMoveDialog = false
                     isSelectionMode = false
