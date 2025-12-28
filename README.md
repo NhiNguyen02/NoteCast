@@ -22,18 +22,6 @@
 
 [![Async](https://img.shields.io/badge/Async-Kotlin%20Coroutines%20%2B%20Flow-success)](https://kotlinlang.org/docs/coroutines-overview.html)
 
-
----
-
-## UI
-| Home | Note Detail | Audio |
-|------|-------------|-------|
-| ![](images\home.jpg) | ![](images\text.jpg) | ![](images\audio.jpg) |
-
-| Create Note | Record | Mind map |
-|------|-------------|-------|
-| ![](images\create.jpg) | ![](images\record.jpg) | ![](images\mindmap.jpg) |
-
 ---
 ## ✨ Các tính năng chính
 
