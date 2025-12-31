@@ -1,5 +1,7 @@
 # NoteCast
-
+<p align="center">
+  <img src="images/login.jpg" width="250"/>
+</p>
 ## Tổng quan 
 
 **NoteCast** là ứng dụng Android ghi âm và quản lý ghi chú thông minh, sử dụng AI để chuyển đổi giọng nói thành văn bản (ASR), tóm tắt nội dung, trích xuất từ khóa và tạo mindmap tự động. Ứng dụng được xây dựng với kiến trúc **Clean Architecture** kết hợp **MVVM** pattern, sử dụng **Jetpack Compose** cho UI và **Dagger Hilt** cho Dependency Injection.
@@ -22,7 +24,15 @@
 
 [![Async](https://img.shields.io/badge/Async-Kotlin%20Coroutines%20%2B%20Flow-success)](https://kotlinlang.org/docs/coroutines-overview.html)
 
----
+###Framework AuralFlow
+
+
+<p align="center">
+  <img src="images/pipeline.png"  />
+</p>
+Sơ đồ pipeline mô tả luồng xử lý dữ liệu âm thanh từ ghi âm → ASR → NLP → tóm tắt → trích xuất từ khóa → sinh sơ đồ tư duy,
+đóng vai trò nền tảng cho toàn bộ hệ thống NoteCast.
+
 ## ✨ Các tính năng chính
 
 ### 🎙️ Ghi âm & Xử lý âm thanh thông minh
@@ -252,7 +262,14 @@ app/src/main/java/com/example/notecast/
 └── utils/
     └── CommonUtils.kt
 ```
-##  Cài Đặt và Chạy Dự Án
+## Demo Screenshot
+
+<p align="center">
+  <img src="images/home.jpg" width="250"/>
+  <img src="images/record.jpg" width="250"/>
+  <img src="images/audio.jpg" width="250"/>
+</p>
+##  Hướng dẫn cài Đặt và Chạy Dự Án
 
 ### 1️⃣ Chuẩn bị môi trường
 - Android Studio Hedgehog+ (Giraffe trở lên)
@@ -305,3 +322,4 @@ Mở ghi chú → Nhấn Tab "Tóm tắt", "Keyword" hoặc "Mindmap" để xem 
 1. Tab "Thư mục" để tạo, sửa, xóa thư mục
 2. Di chuyển ghi chú giữa các thư mục
 ---
+
