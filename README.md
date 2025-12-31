@@ -269,7 +269,8 @@ app/src/main/java/com/example/notecast/
   <img src="images/record.jpg" width="250"/>
   <img src="images/audio.jpg" width="250"/>
 </p>
-##  Hướng dẫn cài Đặt và Chạy Dự Án
+
+## Hướng dẫn Cài Đặt và Chạy Dự Án
 
 ### 1️⃣ Chuẩn bị môi trường
 - Android Studio Hedgehog+ (Giraffe trở lên)
@@ -322,4 +323,5 @@ Mở ghi chú → Nhấn Tab "Tóm tắt", "Keyword" hoặc "Mindmap" để xem 
 1. Tab "Thư mục" để tạo, sửa, xóa thư mục
 2. Di chuyển ghi chú giữa các thư mục
 ---
+
 
