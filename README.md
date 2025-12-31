@@ -2,6 +2,7 @@
 <p align="center">
   <img src="images/home.jpg" width="250"/>
 </p>
+
 ## Tổng quan 
 
 **NoteCast** là ứng dụng Android ghi âm và quản lý ghi chú thông minh, sử dụng AI để chuyển đổi giọng nói thành văn bản (ASR), tóm tắt nội dung, trích xuất từ khóa và tạo mindmap tự động. Ứng dụng được xây dựng với kiến trúc **Clean Architecture** kết hợp **MVVM** pattern, sử dụng **Jetpack Compose** cho UI và **Dagger Hilt** cho Dependency Injection.
@@ -329,6 +330,7 @@ Mở ghi chú → Nhấn Tab "Tóm tắt", "Keyword" hoặc "Mindmap" để xem 
 1. Tab "Thư mục" để tạo, sửa, xóa thư mục
 2. Di chuyển ghi chú giữa các thư mục
 ---
+
 
 
 
