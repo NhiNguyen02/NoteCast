@@ -1,6 +1,6 @@
 # NoteCast
 <p align="center">
-  <img src="images/login.jpg" width="250"/>
+  <img src="images/home.jpg" width="250"/>
 </p>
 ## Tổng quan 
 
@@ -24,12 +24,13 @@
 
 [![Async](https://img.shields.io/badge/Async-Kotlin%20Coroutines%20%2B%20Flow-success)](https://kotlinlang.org/docs/coroutines-overview.html)
 
-###Framework AuralFlow
+### Framework AuralFlow
 
 
 <p align="center">
   <img src="images/pipeline.png"  />
 </p>
+
 Sơ đồ pipeline mô tả luồng xử lý dữ liệu âm thanh từ ghi âm → ASR → NLP → tóm tắt → trích xuất từ khóa → sinh sơ đồ tư duy,
 đóng vai trò nền tảng cho toàn bộ hệ thống NoteCast.
 
@@ -266,8 +267,13 @@ app/src/main/java/com/example/notecast/
 
 <p align="center">
   <img src="images/home.jpg" width="250"/>
+  <img src="images/DSthumuc.jpg" width="250"/>
+  <img src="images/text.jpg" width="250"/>
+</p>
+<p align="center">
   <img src="images/record.jpg" width="250"/>
   <img src="images/audio.jpg" width="250"/>
+  <img src="images/Mindmap.jpg" width="250"/>
 </p>
 
 ## Hướng dẫn Cài Đặt và Chạy Dự Án
@@ -307,21 +313,22 @@ app/src/main/java/com/example/notecast/
 ## Hướng Dẫn Sử Dụng
 
 ### Đăng nhập & Onboarding
-1. Mở app lần đầu → Onboarding → Đăng nhập Google
-2. Sau khi đăng nhập, truy cập giao diện chính
+1. Mở app lần đầu → Onboarding → Trang chủ
+2. Các lần sau truy cập trang chủ
 
 ### Tạo ghi chú mới
 1. Nhấn nút "+" để tạo ghi chú
 2. Chọn loại: Văn bản hoặc Ghi âm
 3. Nhập nội dung hoặc ghi âm
-4. Lưu ghi chú, có thể chọn thư mục
+4. Lưu ghi chú
 
-### Tóm tắt & Mindmap AI
+### Xem tóm tắt & Mindmap 
 Mở ghi chú → Nhấn Tab "Tóm tắt", "Keyword" hoặc "Mindmap" để xem kết quả
 
 ### Quản lý thư mục
 1. Tab "Thư mục" để tạo, sửa, xóa thư mục
 2. Di chuyển ghi chú giữa các thư mục
 ---
+
 
 
